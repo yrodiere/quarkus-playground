@@ -1,5 +1,11 @@
-display:
-  mach: 3
-  unit:
-    name: "mph"
-    factor: 2.23694
+quarkus:
+  datasource:
+    db-kind: h2
+    username: hibernate
+    password: hibernate
+    jdbc:
+      url: jdbc:h2:mem:test
+  hibernate-orm:
+    database:
+      generation: drop-and-create
+
