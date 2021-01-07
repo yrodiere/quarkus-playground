@@ -10,12 +10,21 @@ import static org.hamcrest.CoreMatchers.is;
 public class GreetingResourceTest {
 
     @Test
-    public void testHelloEndpoint() {
+    public void testStatic() {
         given()
-          .when().get("/hello-resteasy")
+          .when().get("/hello/static")
           .then()
              .statusCode(200)
-             .body(is("Hello RESTEasy"));
+             .body(is("foo1() was called!"));
+    }
+
+    @Test
+    public void testRuntime() {
+        given()
+                .when().get("/hello/runtime")
+                .then()
+                .statusCode(200)
+                .body(is("foo2() was called!"));
     }
 
 }
