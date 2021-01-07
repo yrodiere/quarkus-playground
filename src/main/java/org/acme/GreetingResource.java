@@ -29,4 +29,12 @@ public class GreetingResource {
     public String runtime() {
         return new Caller("foo2").call();
     }
+
+    @GET
+    @Path("static-runtime")
+    @Produces(MediaType.TEXT_PLAIN)
+    public String static_runtime() {
+        // Use reflection on a method that was already obtained through reflection during static init
+        return new Caller("foo1").call();
+    }
 }
