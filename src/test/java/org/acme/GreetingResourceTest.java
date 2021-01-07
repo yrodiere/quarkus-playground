@@ -27,4 +27,13 @@ public class GreetingResourceTest {
                 .body(is("foo2() was called!"));
     }
 
+    @Test
+    public void testStaticRuntime() {
+        given()
+                .when().get("/hello/static-runtime")
+                .then()
+                .statusCode(200)
+                .body(is("foo1() was called!"));
+    }
+
 }
