@@ -24,7 +24,7 @@ public class GreetingResourceTest {
                 .when().get("/hello/runtime")
                 .then()
                 .statusCode(200)
-                .body(is("foo2() was called!"));
+                .body(is("foo3() was called!"));
     }
 
     @Test
@@ -34,6 +34,20 @@ public class GreetingResourceTest {
                 .then()
                 .statusCode(200)
                 .body(is("foo1() was called!"));
+    }
+
+    @Test
+    public void testStaticAmbiguousCallSite() {
+        given()
+                .when().get("/hello/static-ambiguous-callsite?method=foo1")
+                .then()
+                .statusCode(200)
+                .body(is("foo1() was called!"));
+        given()
+                .when().get("/hello/static-ambiguous-callsite?method=foo2")
+                .then()
+                .statusCode(200)
+                .body(is("foo2() was called!"));
     }
 
 }
