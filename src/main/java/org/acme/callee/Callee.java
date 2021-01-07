@@ -10,4 +10,8 @@ public class Callee {
         return "foo2() was called!";
     }
 
+    public String foo3() {
+        return "foo3() was called!";
+    }
+
 }
