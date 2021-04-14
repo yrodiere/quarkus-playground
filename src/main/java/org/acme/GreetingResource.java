@@ -32,21 +32,6 @@ public class GreetingResource {
     }
 
     @GET
-    @Path("runtime")
-    @Produces(MediaType.TEXT_PLAIN)
-    public String runtime() {
-        return new Caller("foo3").call();
-    }
-
-    @GET
-    @Path("static-runtime")
-    @Produces(MediaType.TEXT_PLAIN)
-    public String static_runtime() {
-        // Use reflection on a method that was already obtained through reflection during static init
-        return new Caller("foo1").call();
-    }
-
-    @GET
     @Path("static-ambiguous-callsite")
     @Produces(MediaType.TEXT_PLAIN)
     public String static_ambiguous_callsite(@QueryParam String method) {

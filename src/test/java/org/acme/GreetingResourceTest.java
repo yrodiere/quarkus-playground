@@ -19,24 +19,6 @@ public class GreetingResourceTest {
     }
 
     @Test
-    public void testRuntime() {
-        given()
-                .when().get("/hello/runtime")
-                .then()
-                .statusCode(200)
-                .body(is("foo3() was called!"));
-    }
-
-    @Test
-    public void testStaticRuntime() {
-        given()
-                .when().get("/hello/static-runtime")
-                .then()
-                .statusCode(200)
-                .body(is("foo1() was called!"));
-    }
-
-    @Test
     public void testStaticAmbiguousCallSite() {
         given()
                 .when().get("/hello/static-ambiguous-callsite?method=foo1")
