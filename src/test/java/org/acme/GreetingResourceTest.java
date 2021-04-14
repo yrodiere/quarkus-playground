@@ -32,4 +32,13 @@ public class GreetingResourceTest {
                 .body(is("foo2() was called!"));
     }
 
+    @Test
+    public void testConcurrency() {
+        given()
+                .when().get("/hello/static-concurrency")
+                .then()
+                .body(is("OK"))
+                .statusCode(200);
+    }
+
 }
