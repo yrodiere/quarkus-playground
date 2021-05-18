@@ -1,22 +1,27 @@
 package io.quarkus.playground;
 
+import org.hibernate.Hibernate;
 import org.jboss.resteasy.annotations.jaxrs.PathParam;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
+import javax.transaction.Transactional;
 import javax.ws.rs.GET;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
-@Path("/hello-resteasy")
-public class GreetingResource {
+@Path("/entity")
+public class EntityResource {
 
     @PersistenceContext
     EntityManager entityManager;
 
-    @GET
+    @PUT
+    @Path("/{id}/")
     @Produces(MediaType.TEXT_PLAIN)
+    @Transactional
     public void create(@PathParam long id) {
         Containing containing = new Containing();
         containing.setId(id);
@@ -31,10 +36,11 @@ public class GreetingResource {
     }
 
     @GET
+    @Path("/{id}/is-contained-initialized/")
     @Produces(MediaType.TEXT_PLAIN)
-    public boolean isInitialized(@PathParam long id) {
-        Containing containing = new Containing();
-        entityManager.persist(containing);
-
+    @Transactional
+    public boolean isContainedInitialized(@PathParam long id) {
+        Containing containing = entityManager.getReference(Containing.class, id);
+        return Hibernate.isInitialized(containing.getContained());
     }
 }
