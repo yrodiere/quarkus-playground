@@ -40,7 +40,7 @@ public class EntityResource {
     @Produces(MediaType.TEXT_PLAIN)
     @Transactional
     public boolean isContainedInitialized(@PathParam long id) {
-        Containing containing = entityManager.getReference(Containing.class, id);
+        Containing containing = entityManager.find(Containing.class, id);
         return Hibernate.isInitialized(containing.getContained());
     }
 }
