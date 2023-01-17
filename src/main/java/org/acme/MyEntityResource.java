@@ -23,7 +23,7 @@ public class MyEntityResource {
     }
 
     @Transactional
-    private Long doCount() {
+    public Long doCount() {
         return (Long) entityManager.createQuery("select count(*) from MyEntity").getSingleResult();
     }
 
@@ -36,7 +36,7 @@ public class MyEntityResource {
     }
 
     @Transactional
-    private Long doCreate() {
+    public Long doCreate() {
         var entity = new MyEntity();
         entity.setField("foo");
         entityManager.persist(entity);
