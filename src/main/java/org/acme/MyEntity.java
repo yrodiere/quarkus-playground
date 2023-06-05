@@ -2,6 +2,7 @@ package org.acme;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.Entity;
+import jakarta.xml.bind.annotation.XmlRootElement;
 
 
 /**
@@ -24,6 +25,15 @@ import jakarta.persistence.Entity;
  * }
  */
 @Entity
+@XmlRootElement(name = "myentity")
 public class MyEntity extends PanacheEntity {
-    public String field;
+    private String field;
+
+    public String getField() {
+        return field;
+    }
+
+    public void setField(String field) {
+        this.field = field;
+    }
 }
