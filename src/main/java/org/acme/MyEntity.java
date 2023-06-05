@@ -27,7 +27,7 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 @Entity
 @XmlRootElement(name = "myentity")
 public class MyEntity extends PanacheEntity {
-    private String field;
+    public String field;
 
     public String getField() {
         return field;
