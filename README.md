@@ -47,3 +47,10 @@ __  ____  __  _____   ___  __ ____  ______
         at org.graalvm.nativeimage.builder/com.oracle.svm.core.thread.PlatformThreads.threadStartRoutine(PlatformThreads.java:775)
         at org.graalvm.nativeimage.builder/com.oracle.svm.core.posix.thread.PosixPlatformThreads.pthreadStartRoutine(PosixPlatformThreads.java:203)
 ```
+
+How to test a newer version of Hibernate ORM:
+
+```shell
+./mvnw clean package -Dnative -Dversion.org.hibernate.orm=6.2.6-SNAPSHOT
+QUARKUS_DATASOURCE_JDBC_URL=foo ./target/code-with-quarkus-1.0.0-SNAPSHOT-runner
+```
