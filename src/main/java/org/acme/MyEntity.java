@@ -1,6 +1,6 @@
 package org.acme;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -29,9 +29,17 @@ import java.util.UUID;
  * }
  */
 @Entity
-public class MyEntity {
+public class MyEntity extends PanacheEntityBase {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    public UUID myId;
+    public UUID id;
     public String field;
+
+    @Override
+    public String toString() {
+        return "MyEntity{" +
+                "id=" + id +
+                ", field='" + field + '\'' +
+                '}';
+    }
 }
