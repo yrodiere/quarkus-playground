@@ -129,5 +129,34 @@
         <quarkus.package.type>native</quarkus.package.type>
       </properties>
     </profile>
+    <profile>
+      <id>orm-override</id>
+      <activation>
+        <property>
+          <name>version.org.hibernate.orm</name>
+        </property>
+      </activation>
+      <dependencyManagement>
+        <dependencies>
+          <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <version>${version.org.hibernate.orm}</version>
+          </dependency>
+        </dependencies>
+      </dependencyManagement>
+      <repositories>
+        <repository>
+          <id>sonatype-oss</id>
+          <name>JBoss Public Maven Repository Group</name>
+          <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+          <layout>default</layout>
+          <snapshots>
+            <enabled>true</enabled>
+            <updatePolicy>always</updatePolicy>
+          </snapshots>
+        </repository>
+      </repositories>
+    </profile>
   </profiles>
 </project>
