@@ -1,19 +1,16 @@
 package io.quarkus.playground;
 
-import java.util.ArrayList;
+import jakarta.inject.Inject;
 import java.util.logging.Logger;
-import org.hibernate.Hibernate;
 import org.jboss.resteasy.annotations.jaxrs.PathParam;
 
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
-import javax.transaction.Transactional;
-import javax.ws.rs.GET;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import org.jboss.logmanager.Level;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.transaction.Transactional;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
 
 @Path("/entity")
 public class EntityResource {
@@ -23,90 +20,67 @@ public class EntityResource {
     @PersistenceContext
     EntityManager entityManager;
 
+    @Inject
+    ContainingBusinessBean bean;
+
     @PUT
     @Path("/{id}/")
     @Produces(MediaType.TEXT_PLAIN)
     @Transactional
     public void create(@PathParam long id) {
-        Containing containing = new Containing();
-        containing.setId(id);
 
-        Containing2 containing2 = new Containing2();
-        containing2.setId(id);
-        entityManager.persist(containing2);
+        System system = new System();
+        entityManager.persist(system);
 
-        for (int i = 0; i < 5; i++) {
-            Contained contained = new Contained();
-            contained.setContaining(containing);
-            contained.setContaining2(containing2);
-            containing.getContained().add(contained);
-        }
+        Module module = new Module();
+        module.setId(id);
+        module.setSystem(system);
+        entityManager.persist(module);
 
-        entityManager.persist(containing);
+        Role role = new Role();
+        role.setId(id);
+        role.setModule(module);
+        role.setSystem(system);
+        entityManager.persist(role);
+        
+        Operation op = new Operation();
+        op.setCodigo("OP1");
+        op.setModulo(module);
+        op.setSistema(system);
+        entityManager.persist(op);
+        
+        Operation op2 = new Operation();
+        op2.setCodigo("OP2");
+        op2.setModulo(module);
+        op2.setSistema(system);
+        entityManager.persist(op2);
+        
+        RolOperation rolOpe = new RolOperation();
+        rolOpe.setId(1L);
+        rolOpe.setOperacion(op);
+        rolOpe.setRol(role);
+        entityManager.persist(rolOpe);
+        
+        RolOperation rolOpe2 = new RolOperation();
+        rolOpe2.setId(2L);
+        rolOpe2.setOperacion(op2);
+        rolOpe2.setRol(role);
+        entityManager.persist(rolOpe2);
+
     }
 
-    @GET
-    @Path("/{id}/is-contained-initialized/")
+    @PUT
+    @Path("/test/{id}")
     @Produces(MediaType.TEXT_PLAIN)
-    @Transactional
-    public boolean isContainedInitialized(@PathParam long id) {
-        Containing containing = entityManager.find(Containing.class, id);
-        return Hibernate.isInitialized(containing.getContained());
+    public void update(@PathParam long id) throws Exception {
+        Role role = bean.findRoleById(id);
+        save(role);
     }
 
-    @GET
-    @Path("/{id}/is-contained-initialized-after-merge/")
-    @Produces(MediaType.TEXT_PLAIN)
     @Transactional
-    public boolean isContainedInitializedAfterMerge(@PathParam long id) {
-        Containing containing = entityManager.find(Containing.class, id);
-        Containing2 containing2 = entityManager.find(Containing2.class, id);
-        entityManager.detach(containing);
-        entityManager.detach(containing2);
-
-        containing.setContained(new ArrayList<>());
-        for (int i = 0; i < 5; i++) {
-            Contained contained = new Contained();
-            contained.setContaining(containing);
-            contained.setContaining2(containing2);
-            containing.getContained().add(contained);
-        }
-        containing = entityManager.merge(containing);
-
-        LOGGER.log(Level.SEVERE, "INIT:" + Hibernate.isInitialized(containing.getContained()));
-        LOGGER.log(Level.SEVERE, "INIT:" + Hibernate.isInitialized(containing.getContained().get(0)));
-        LOGGER.log(Level.SEVERE, "INIT:" + Hibernate.isInitialized(containing.getContained().get(0).getContaining2()));
-        LOGGER.log(Level.SEVERE, "INIT:" + Hibernate.isInitialized(containing.getContained().get(0).getContaining2().getContained()));
-
-        return Hibernate.isInitialized(containing.getContained().get(0).getContaining2().getContained()); //Must be false
+    public void save(Role role) throws Exception {
+        Module cont2 = bean.findModuleById(role.getModule().getId());
+        entityManager.merge(role);
     }
 
-    @GET
-    @Path("/{id}/lazy-exception/")
-    @Produces(MediaType.APPLICATION_JSON)
-    @Transactional
-    public Containing lazyException(@PathParam long id) {
-
-        try {
-            Containing containing = entityManager.find(Containing.class, id);
-            Containing2 containing2 = entityManager.find(Containing2.class, id);
-            entityManager.detach(containing);
-            entityManager.detach(containing2);
-
-            containing.setContained(new ArrayList<>());
-            for (int i = 0; i < 5; i++) {
-                Contained contained = new Contained();
-                contained.setContaining(containing);
-                contained.setContaining2(containing2);
-                containing.getContained().add(contained);
-            }
-            containing = entityManager.merge(containing);
-
-            return containing; //Hibernate5Module and CustomLazySerializer not working? 
-
-        } catch (Exception ex) {
-            LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
-            throw ex;
-        }
-    }
 }

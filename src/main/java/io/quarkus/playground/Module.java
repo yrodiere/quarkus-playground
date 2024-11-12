@@ -2,21 +2,21 @@ package io.quarkus.playground;
 
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.voodoodyne.jackson.jsog.JSOGGenerator;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.OneToMany;
-import java.util.ArrayList;
-import java.util.List;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 
 @Entity
 @JsonIdentityInfo(generator = JSOGGenerator.class)
-public class Containing2 {
+public class Module {
 
     @Id
     private Long id;
-
-    @OneToMany(mappedBy = "containing2")
-    private List<Contained> contained = new ArrayList<>();
+    
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "sistema_id")
+    private System system;
 
     public Long getId() {
         return id;
@@ -26,13 +26,14 @@ public class Containing2 {
         this.id = id;
     }
 
-    public List<Contained> getContained() {
-        return contained;
+    public System getSystem() {
+        return system;
     }
 
-    public void setContained(List<Contained> contained) {
-        this.contained = contained;
+    public void setSystem(System system) {
+        this.system = system;
     }
+
 
     @Override
     public String toString() {

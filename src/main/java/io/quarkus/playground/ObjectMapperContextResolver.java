@@ -8,8 +8,8 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.datatype.hibernate5.Hibernate5Module;
-import com.fasterxml.jackson.datatype.hibernate5.Hibernate5Module.Feature;
+import com.fasterxml.jackson.datatype.hibernate6.Hibernate6Module;
+import com.fasterxml.jackson.datatype.hibernate6.Hibernate6Module.Feature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
@@ -18,8 +18,8 @@ import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import javax.ws.rs.ext.ContextResolver;
-import javax.ws.rs.ext.Provider;
+import jakarta.ws.rs.ext.ContextResolver;
+import jakarta.ws.rs.ext.Provider;
 
 /**
  *
@@ -50,7 +50,7 @@ public class ObjectMapperContextResolver implements ContextResolver<ObjectMapper
         SimpleModule module = new SimpleModule();
         module.setSerializerModifier(new CustomLazySerializer());
 
-        defaultMapper.registerModule(new Hibernate5Module().disable(Feature.USE_TRANSIENT_ANNOTATION))
+        defaultMapper.registerModule(new Hibernate6Module().disable(Feature.USE_TRANSIENT_ANNOTATION))
                 //.registerModule(module)
                 .registerModule(javaTimeModule)
                 .setSerializationInclusion(JsonInclude.Include.NON_NULL)
