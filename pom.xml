@@ -20,6 +20,14 @@
     </properties>
     <dependencyManagement>
         <dependencies>
+            <!-- Don't try this at home!
+                 Overriding the version of Hibernate in Quarkus will cause problems in general.
+                 It's just handy for quick and dirty testing. -->
+            <dependency>
+                <groupId>org.hibernate.orm</groupId>
+                <artifactId>hibernate-core</artifactId>
+                <version>6.6.2.Final</version>
+            </dependency>
             <dependency>
                 <groupId>${quarkus.platform.group-id}</groupId>
                 <artifactId>${quarkus.platform.artifact-id}</artifactId>
