@@ -1,6 +1,6 @@
 quarkus:
   datasource:
-    db-kind: mssql
+    db-kind: mysql
     targetdb:
       db-kind: postgresql
   hibernate-orm:
