@@ -1,24 +1,10 @@
 quarkus:
-  devservices:
-    enabled: false
   datasource:
     db-kind: mssql
-    username: u1
-    password: p1
-    jdbc:
-      url: url1
     targetdb:
       db-kind: postgresql
-      jdbc:
-        url: url2
-      username: u2
-      password: p2
   hibernate-orm:
     packages: 'com.acme'
-    database:
-      generation: none
     targetdb:
       packages: 'com.acme'
       datasource: targetdb
-      database:
-        generation: none
