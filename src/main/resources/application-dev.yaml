@@ -14,9 +14,11 @@ quarkus:
       username: u2
       password: p2
   hibernate-orm:
+    packages: 'com.acme'
     database:
       generation: none
     targetdb:
+      packages: 'com.acme'
       datasource: targetdb
       database:
         generation: none

@@ -10,5 +10,5 @@ public class Manager{
     SourceRepository srepo;
 
     @Inject
-    TargetRepository srepo;
+    TargetRepository trepo;
 }
