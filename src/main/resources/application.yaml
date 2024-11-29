@@ -1,0 +1,11 @@
+"%dev":
+  quarkus:
+    datasource:
+      db-kind: mysql
+      targetdb:
+        db-kind: postgresql
+    hibernate-orm:
+      packages: 'com.acme'
+      targetdb:
+        packages: 'com.acme'
+        datasource: targetdb
