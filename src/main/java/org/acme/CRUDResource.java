@@ -1,5 +1,11 @@
 package org.acme;
 
+import io.agroal.pool.wrapper.ConnectionWrapper;
+import io.quarkus.arc.Arc;
+import io.quarkus.arc.ClientProxy;
+import io.quarkus.logging.Log;
+import io.quarkus.runtime.StartupEvent;
+import jakarta.enterprise.event.Observes;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
@@ -13,12 +19,30 @@ import jakarta.ws.rs.core.Response;
 import org.jboss.resteasy.reactive.RestPath;
 import org.jboss.resteasy.reactive.RestQuery;
 
+import javax.sql.DataSource;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.sql.SQLException;
+
+;
 
 @Path("/crud")
 @Transactional
 public class CRUDResource {
+
+    void startupChecks(@Observes StartupEvent event) {
+        var datasource = ClientProxy.unwrap(Arc.container().instance(DataSource.class).get());
+        try (var connection = datasource.getConnection()) {
+            var rawConnection = ((ConnectionWrapper) connection).getHandler().rawConnection();
+            Log.infof("Using connection type: %s", rawConnection.getClass());
+            if (!(rawConnection instanceof oracle.ucp.jdbc.proxy.oracle.ConnectionProxy)) {
+                throw new IllegalStateException("Connection type does not extend " + oracle.ucp.jdbc.proxy.oracle.ConnectionProxy.class.getName()
+                        + "; it is of type " + rawConnection.getClass().getName() + "instead.");
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     @POST
     @Produces(MediaType.TEXT_PLAIN)
