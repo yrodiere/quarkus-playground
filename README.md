@@ -1,17 +1,43 @@
 # Reproducer
 
-How to test with the built-in version of Hibernate ORM:
+## How to run tests
+
+This will spin up a local DB instance using docker/podman.
 
 ```shell
 ./mvnw clean verify
-# OR, native mode:
-./mvnw clean verify -Dnative
 ```
 
-How to test a newer version of Hibernate ORM:
+## How to run in dev mode
+
+This will spin up a local DB instance using docker/podman.
 
 ```shell
-./mvnw clean verify  -Dversion.org.hibernate.orm=6.2.6-SNAPSHOT
-# OR, native mode:
-./mvnw clean package -Dnative -Dversion.org.hibernate.orm=6.2.6-SNAPSHOT
+./mvnw quarkus:dev
 ```
+
+Then use the various CRUD methods:
+
+Create (returns the entity identifier):
+
+```shell
+curl -i -XPOST 'localhost:8080/crud?value=foo'
+````
+
+Retrieve:
+
+```shell
+curl -i -XGET 'localhost:8080/crud/1'
+````
+
+Update:
+
+```shell
+curl -i -XPUT 'localhost:8080/crud/1?value=bar'
+````
+
+Delete:
+
+```shell
+curl -i -XDELETE 'localhost:8080/crud/1'
+````
