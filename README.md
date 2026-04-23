@@ -22,3 +22,24 @@ To test native:
 ```shell
 ./mvnw clean verify -Dnative
 ```
+
+# How to get a test report
+
+To get a detailed report after the tests ran:
+
+```shell
+./mvnw surefire-report:failsafe-report-only
+xdg-open target/reports/failsafe.html
+```
+
+In one simple command:
+
+```shell
+./mvnw clean verify; ./mvnw surefire-report:failsafe-report-only && xdg-open target/reports/failsafe.html
+```
+
+Or, with native:
+
+```shell
+./mvnw clean verify; ./mvnw verify -Dnative; ./mvnw surefire-report:failsafe-report-only && xdg-open target/reports/failsafe.html
+```
