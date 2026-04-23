@@ -1,4 +1,4 @@
-package org.acme;
+package org.acme.scaffolding;
 
 import jakarta.ws.rs.ServerErrorException;
 import jakarta.ws.rs.core.Response;

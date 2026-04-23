@@ -1,6 +1,7 @@
 package org.acme.test;
 
 import io.restassured.http.ContentType;
+import org.acme.scaffolding.DatabaseProfile;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,15 @@ public abstract class AbstractStoredProcedureTest {
                 .when().post("/test-data/reset")
                 .then()
                 .statusCode(200);
+    }
+
+    @Test
+    public void testEffectiveProfile() {
+        given()
+                .when().get(getEndpointRoot() + "/profile")
+                .then()
+                .statusCode(200)
+                .body(is(DatabaseProfile.current().name));
     }
 
     @Test
@@ -92,9 +102,7 @@ public abstract class AbstractStoredProcedureTest {
     }
 
     @Test
-    public void testCallReturningData() {
-        // TODO also test returning a single value (e.g. int-returning function)
-        // TODO also test returning entity instances
+    public void testCallReturningDataAsResultSet() {
         given()
                 .queryParam("username", "bob")
                 .when().post("/test-data/add-activity")
@@ -102,7 +110,7 @@ public abstract class AbstractStoredProcedureTest {
                 .statusCode(200);
 
         given()
-                .when().get(getEndpointRoot() + "/return-data")
+                .when().get(getEndpointRoot() + "/return-data-result-set")
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.JSON)
@@ -117,13 +125,106 @@ public abstract class AbstractStoredProcedureTest {
                 .statusCode(200);
 
         given()
-                .when().get(getEndpointRoot() + "/return-data")
+                .when().get(getEndpointRoot() + "/return-data-result-set")
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.JSON)
                 .body("size()", greaterThanOrEqualTo(2))
                 .body("username", hasItems("bob", "charlie"))
                 .body("fullName", hasItems("Bob Johnson", "Charlie Brown"));
+    }
+
+    @Test
+    public void testCallReturningDataAsBasicType() {
+        given()
+                .queryParam("username", "bob")
+                .when().post("/test-data/add-activity")
+                .then()
+                .statusCode(200);
+
+        given()
+                .when().get(getEndpointRoot() + "/return-data-basic-type")
+                .then()
+                .statusCode(200)
+                .body(Matchers.is("1"));
+
+        given()
+                .queryParam("username", "charlie")
+                .when().post("/test-data/add-activity")
+                .then()
+                .statusCode(200);
+
+        given()
+                .when().get(getEndpointRoot() + "/return-data-basic-type")
+                .then()
+                .statusCode(200)
+                .body(Matchers.is("2"));
+    }
+
+    @Test
+    public void testCallReturningDataAsEntitiesNoAssociation() {
+        given()
+                .queryParam("username", "bob")
+                .when().post("/test-data/add-activity")
+                .then()
+                .statusCode(200);
+
+        given()
+                .when().get(getEndpointRoot() + "/return-data-entities-no-association")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .body("size()", greaterThanOrEqualTo(1))
+                .body("username", hasItems("bob"))
+                .body("fullName", hasItems("Bob Johnson"));
+
+        given()
+                .queryParam("username", "charlie")
+                .when().post("/test-data/add-activity")
+                .then()
+                .statusCode(200);
+
+        given()
+                .when().get(getEndpointRoot() + "/return-data-entities-no-association")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .body("size()", greaterThanOrEqualTo(2))
+                .body("username", hasItems("bob", "charlie"))
+                .body("fullName", hasItems("Bob Johnson", "Charlie Brown"));
+    }
+
+    @Test
+    public void testCallReturningDataAsEntitiesToOne() {
+        given()
+                .queryParam("username", "bob")
+                .when().post("/test-data/add-activity")
+                .then()
+                .statusCode(200);
+
+        given()
+                .when().get(getEndpointRoot() + "/return-data-entities-toone")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .body("size()", greaterThanOrEqualTo(1))
+                .body("profile.username", hasItems("bob"))
+                .body("profile.fullName", hasItems("Bob Johnson"));
+
+        given()
+                .queryParam("username", "charlie")
+                .when().post("/test-data/add-activity")
+                .then()
+                .statusCode(200);
+
+        given()
+                .when().get(getEndpointRoot() + "/return-data-entities-toone")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .body("size()", greaterThanOrEqualTo(2))
+                .body("profile.username", hasItems("bob", "charlie"))
+                .body("profile.fullName", hasItems("Bob Johnson", "Charlie Brown"));
     }
 
     @Test

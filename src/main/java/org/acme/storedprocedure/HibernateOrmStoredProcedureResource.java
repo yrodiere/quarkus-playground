@@ -8,9 +8,12 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
-import org.acme.ReturnedUser;
-import org.acme.UserActivity;
-import org.acme.UserProfile;
+import org.acme.model.ReturnedUser;
+import org.acme.model.UserActivity;
+import org.acme.model.UserProfile;
+import org.acme.scaffolding.DatabaseProfile;
+import org.acme.scaffolding.DatabaseProfileProducer;
+import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.procedure.ProcedureCall;
 import org.jboss.resteasy.reactive.RestQuery;
@@ -24,6 +27,13 @@ public class HibernateOrmStoredProcedureResource {
 
     @Inject
     Session session;
+
+    @GET
+    @Path("/profile")
+    @Produces(MediaType.TEXT_PLAIN)
+    public String profile() {
+        return DatabaseProfileProducer.getDelegateName(session);
+    }
 
     @POST
     @Path("/no-params")
@@ -68,22 +78,171 @@ public class HibernateOrmStoredProcedureResource {
     }
 
     @GET
-    @Path("/return-data")
+    @Path("/return-data-result-set")
     @Produces(MediaType.APPLICATION_JSON)
     @SuppressWarnings("unchecked")
-    public List<ReturnedUser> callReturningData() {
-        // NOTE: This could also be implemented as a native query call (createNativeQuery with SELECT clause),
-        // as long as there are no parameters or only input parameters.
-        ProcedureCall call = session.createStoredProcedureCall("sp_get_active_users", ReturnedUser.RESULT_SET_MAPPING);
-        call.markAsFunctionCall(Types.REF_CURSOR);
-        // WARNING: the persistence context might not have been flushed to the database,
-        // which could cause the native call to return outdated information.
-        // For example there might have been changes to UserActivity or UserProfile entities
-        // in the session which have not been flushed and would affect the count of active users.
-        // The following calls instruct Hibernate ORM to flush any such change before calling the procedure.
-        call.addSynchronizedEntityClass(UserActivity.class);
-        call.addSynchronizedEntityClass(UserProfile.class);
-        return call.getResultList();
+    public List<ReturnedUser> callReturningDataAsResultSet() {
+        switch (DatabaseProfile.current()) {
+            case MSSQL -> {
+                // A MSSQL FUNCTION can only be executed as part of an SQL query.
+                return session.createNativeQuery("SELECT * FROM sp_get_active_users_result_set()",
+                                ReturnedUser.RESULT_SET_MAPPING, ReturnedUser.class)
+                        .addSynchronizedEntityClass(UserActivity.class)
+                        .addSynchronizedEntityClass(UserProfile.class)
+                        .getResultList();
+            }
+            default -> {
+                // NOTE: This could also be implemented as a native query call (createNativeQuery with SELECT clause),
+                // as long as there are no parameters or only input parameters.
+                ProcedureCall call = session.createStoredProcedureCall("sp_get_active_users_result_set", ReturnedUser.RESULT_SET_MAPPING);
+                call.markAsFunctionCall(Types.REF_CURSOR);
+                // WARNING: the persistence context might not have been flushed to the database,
+                // which could cause the native call to return outdated information.
+                // For example there might have been changes to UserActivity or UserProfile entities
+                // in the session which have not been flushed and would affect the count of active users.
+                // The following calls instruct Hibernate ORM to flush any such change before calling the procedure.
+                call.addSynchronizedEntityClass(UserActivity.class);
+                call.addSynchronizedEntityClass(UserProfile.class);
+                return call.getResultList();
+            }
+        }
+    }
+
+    @GET
+    @Path("/return-data-basic-type")
+    @Produces(MediaType.TEXT_PLAIN)
+    public Integer callReturningDataAsBasicType() {
+        switch (DatabaseProfile.current()) {
+            case MSSQL -> {
+                // A MSSQL FUNCTION can only be executed as part of an SQL query.
+                // MSSQL requires an explicit schema here
+                return session.createNativeQuery("SELECT dbo.sp_count_active_users_as_return()", Integer.class)
+                        .addSynchronizedEntityClass(UserActivity.class)
+                        .addSynchronizedEntityClass(UserProfile.class)
+                        .getSingleResult();
+            }
+            default -> {
+                // NOTE: This could also be implemented as a native query call (createNativeQuery with SELECT clause),
+                // as long as there are no parameters or only input parameters.
+                ProcedureCall call = session.createStoredProcedureCall("sp_count_active_users_as_return");
+                call.markAsFunctionCall(Integer.class);
+                // See callReturningDataAsResultSet for why this is sometimes necessary.
+                call.addSynchronizedEntityClass(UserActivity.class);
+                call.addSynchronizedEntityClass(UserProfile.class);
+                return (Integer) call.getSingleResult();
+            }
+        }
+    }
+
+    @GET
+    @Path("/return-data-entities-no-association")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<UserProfile> callReturningDataAsEntitiesNoAssociation() {
+        switch (DatabaseProfile.current()) {
+            case MSSQL -> {
+                // A MSSQL FUNCTION can only be executed as part of an SQL query.
+                @SuppressWarnings("unchecked")
+                List<UserProfile> results = session.createNativeQuery("SELECT * FROM sp_get_active_profiles()",
+                                UserProfile.class)
+                        .addSynchronizedEntityClass(UserActivity.class)
+                        .addSynchronizedEntityClass(UserProfile.class)
+                        .getResultList();
+                // The following are just checks and would not be present in an actual application.
+                for (UserProfile result : results) {
+                    // Entities are attached to the session, allowing lazy-loading, dirty-tracking, etc.
+                    assert session.contains(result);
+                    // WARNING: to-many associations cannot be initialized eagerly from the result set returned by the procedure.
+                    // Owned, to-one associations can be initialized through a custom mapping (like in callReturningDataAsEntitiesWithAssociation).
+                    // With more Hibernate-native ways to retrieve entities -- e.g. JPQL/HQL queries, Criteria queries,
+                    // or find()/findMultiple() with an entity graph -- any association could be fetched eagerly.
+                    // Multiple SQL statements may be needed, but they can generally be batched (no N+1 select).
+                    assert !Hibernate.isInitialized(result.activities);
+                }
+                return results;
+            }
+            default -> {
+                // NOTE: This could also be implemented as a native query call (createNativeQuery with SELECT clause),
+                // as long as there are no parameters or only input parameters.
+                // WARNING: The stored procedure must return all columns needed to construct the entity instance;
+                // missing columns will lead to "org.hibernate.exception.SQLGrammarException: Unable to find column position by name".
+                ProcedureCall call = session.createStoredProcedureCall("sp_get_active_profiles", UserProfile.class);
+                call.markAsFunctionCall(Types.REF_CURSOR);
+                // See callReturningDataAsResultSet for why this is sometimes necessary.
+                call.addSynchronizedEntityClass(UserActivity.class);
+                call.addSynchronizedEntityClass(UserProfile.class);
+                @SuppressWarnings("unchecked")
+                List<UserProfile> results = call.getResultList();
+                // The following are just checks and would not be present in an actual application.
+                for (UserProfile result : results) {
+                    // Entities are attached to the session, allowing lazy-loading, dirty-tracking, etc.
+                    assert session.contains(result);
+                    // WARNING: to-many associations cannot be initialized eagerly from the result set returned by the procedure.
+                    // Owned, to-one associations can be initialized through a custom mapping (like in callReturningDataAsEntitiesWithAssociation).
+                    // With more Hibernate-native ways to retrieve entities -- e.g. JPQL/HQL queries, Criteria queries,
+                    // or find()/findMultiple() with an entity graph -- any association could be fetched eagerly.
+                    // Multiple SQL statements may be needed, but they can generally be batched (no N+1 select).
+                    assert !Hibernate.isInitialized(result.activities);
+                }
+                return results;
+            }
+        }
+    }
+
+    @GET
+    @Path("/return-data-entities-toone")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<UserActivity> callReturningDataAsEntitiesWithToOne() {
+        switch (DatabaseProfile.current()) {
+            case MSSQL -> {
+                // A MSSQL FUNCTION can only be executed as part of an SQL query.
+                @SuppressWarnings("unchecked")
+                List<UserActivity> results = session.createNativeQuery("SELECT * FROM sp_get_activities_with_profiles()",
+                                UserActivity.class,
+                                UserActivity.RESULT_SET_MAPPING_WITH_PROFILE)
+                        .addSynchronizedEntityClass(UserActivity.class)
+                        .addSynchronizedEntityClass(UserProfile.class)
+                        .getResultList();
+                // The following are just checks and would not be present in an actual application.
+                for (UserActivity result : results) {
+                    // Entities are attached to the session, allowing lazy-loading, dirty-tracking, etc.
+                    assert session.contains(result);
+                    // WARNING: to-many associations cannot be initialized eagerly from the result set returned by the procedure.
+                    // Owned, to-one associations can be initialized through a custom mapping (like in callReturningDataAsEntitiesWithAssociation).
+                    // With more Hibernate-native ways to retrieve entities -- e.g. JPQL/HQL queries, Criteria queries,
+                    // or find()/findMultiple() with an entity graph -- any association could be fetched eagerly.
+                    // Multiple SQL statements may be needed, but they can generally be batched (no N+1 select).
+                    assert Hibernate.isInitialized(result.profile);
+                    assert Hibernate.isPropertyInitialized(result.profile, "fullName");
+                }
+                return results;
+            }
+            default -> {
+                // NOTE: This could also be implemented as a native query call (createNativeQuery with SELECT clause),
+                // as long as there are no parameters or only input parameters.
+                // WARNING: The application is responsible for including all columns in the result set mapping.
+                // Failing to do so will result in some data being nulled out, possibly leading to bugs.
+                ProcedureCall call = session.createStoredProcedureCall("sp_get_activities_with_profiles", UserActivity.RESULT_SET_MAPPING_WITH_PROFILE);
+                call.markAsFunctionCall(Types.REF_CURSOR);
+                // See callReturningDataAsResultSet for why this is sometimes necessary.
+                call.addSynchronizedEntityClass(UserActivity.class);
+                call.addSynchronizedEntityClass(UserProfile.class);
+                @SuppressWarnings("unchecked")
+                List<UserActivity> results = call.getResultList();
+                // The following are just checks and would not be present in an actual application.
+                for (UserActivity result : results) {
+                    // Entities are attached to the session, allowing lazy-loading, dirty-tracking, etc.
+                    assert session.contains(result);
+                    // WARNING: to-many associations cannot be initialized eagerly from the result set returned by the procedure.
+                    // Owned, to-one associations can be initialized through a custom mapping (like in callReturningDataAsEntitiesWithAssociation).
+                    // With more Hibernate-native ways to retrieve entities -- e.g. JPQL/HQL queries, Criteria queries,
+                    // or find()/findMultiple() with an entity graph -- any association could be fetched eagerly.
+                    // Multiple SQL statements may be needed, but they can generally be batched (no N+1 select).
+                    assert Hibernate.isInitialized(result.profile);
+                    assert Hibernate.isPropertyInitialized(result.profile, "fullName");
+                }
+                return results;
+            }
+        }
     }
 
     @GET
@@ -92,8 +251,12 @@ public class HibernateOrmStoredProcedureResource {
     @SuppressWarnings("unchecked")
     public List<ReturnedUser> callWithCursor() {
         ProcedureCall call = session.createStoredProcedureCall("sp_get_users_cursor", ReturnedUser.RESULT_SET_MAPPING);
-        call.registerStoredProcedureParameter(1, Class.class, ParameterMode.REF_CURSOR);
-        // See callReturningData for why this is sometimes necessary.
+        if (DatabaseProfile.current() != DatabaseProfile.MSSQL) {
+            // PostgreSQL and Oracle use REF_CURSOR output parameter
+            call.registerStoredProcedureParameter(1, Class.class, ParameterMode.REF_CURSOR);
+        }
+        // MSSQL returns the result set directly (no REF_CURSOR parameter)
+        // See callReturningDataAsResultSet for why this is sometimes necessary.
         call.addSynchronizedEntityClass(UserActivity.class);
         call.addSynchronizedEntityClass(UserProfile.class);
         return call.getResultList();
