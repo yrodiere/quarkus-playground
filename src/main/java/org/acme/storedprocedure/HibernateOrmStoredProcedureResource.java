@@ -23,21 +23,17 @@ import java.util.List;
 
 @Path("/orm-sp")
 @Transactional
-public class HibernateOrmStoredProcedureResource {
+public class HibernateOrmStoredProcedureResource implements StoredProcedureEndpoints {
 
     @Inject
     Session session;
 
-    @GET
-    @Path("/profile")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Override
     public String profile() {
         return DatabaseProfileProducer.getDelegateName(session);
     }
 
-    @POST
-    @Path("/no-params")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Override
     public String callNoParams() {
         // NOTE: This could also be implemented as a native query call (createNativeQuery with CALL clause),
         // as long as there are no parameters or only input parameters.
@@ -46,10 +42,8 @@ public class HibernateOrmStoredProcedureResource {
         return "Activity added via Hibernate ORM";
     }
 
-    @POST
-    @Path("/input-params")
-    @Produces(MediaType.TEXT_PLAIN)
-    public String callWithInputParams(@RestQuery String username) {
+    @Override
+    public String callWithInputParams(String username) {
         // NOTE: This could also be implemented as a native query call (createNativeQuery with CALL clause),
         // as long as there are no parameters or only input parameters.
         ProcedureCall call = session.createStoredProcedureCall("sp_add_activity_with_user");
@@ -63,9 +57,7 @@ public class HibernateOrmStoredProcedureResource {
         return "Activity added for user: " + username;
     }
 
-    @GET
-    @Path("/output-params")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Override
     public Integer callWithOutputParams() {
         ProcedureCall call = session.createStoredProcedureCall("sp_count_active_users");
         call.registerStoredProcedureParameter(1, Integer.class, ParameterMode.INOUT);
@@ -77,9 +69,7 @@ public class HibernateOrmStoredProcedureResource {
         return (Integer) call.getOutputParameterValue(1);
     }
 
-    @GET
-    @Path("/return-data-result-set")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Override
     @SuppressWarnings("unchecked")
     public List<ReturnedUser> callReturningDataAsResultSet() {
         switch (DatabaseProfile.current()) {
@@ -108,9 +98,7 @@ public class HibernateOrmStoredProcedureResource {
         }
     }
 
-    @GET
-    @Path("/return-data-basic-type")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Override
     public Integer callReturningDataAsBasicType() {
         switch (DatabaseProfile.current()) {
             case MSSQL -> {
@@ -134,9 +122,7 @@ public class HibernateOrmStoredProcedureResource {
         }
     }
 
-    @GET
-    @Path("/return-data-entities-no-association")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Override
     public List<UserProfile> callReturningDataAsEntitiesNoAssociation() {
         switch (DatabaseProfile.current()) {
             case MSSQL -> {
@@ -188,9 +174,7 @@ public class HibernateOrmStoredProcedureResource {
         }
     }
 
-    @GET
-    @Path("/return-data-entities-toone")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Override
     public List<UserActivity> callReturningDataAsEntitiesWithToOne() {
         switch (DatabaseProfile.current()) {
             case MSSQL -> {

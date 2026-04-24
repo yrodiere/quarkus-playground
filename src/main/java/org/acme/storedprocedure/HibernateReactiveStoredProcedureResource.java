@@ -2,41 +2,32 @@ package org.acme.storedprocedure;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.MediaType;
-import org.acme.scaffolding.DatabaseProfile;
-import org.acme.scaffolding.DatabaseProfileProducer;
 import org.acme.model.ReturnedUser;
 import org.acme.model.UserActivity;
 import org.acme.model.UserProfile;
-import org.hibernate.reactive.common.AffectedEntities;
+import org.acme.scaffolding.DatabaseProfile;
+import org.acme.scaffolding.DatabaseProfileProducer;
 import org.hibernate.Hibernate;
+import org.hibernate.reactive.common.AffectedEntities;
 import org.hibernate.reactive.mutiny.Mutiny;
-import org.jboss.resteasy.reactive.RestQuery;
 
 import java.util.List;
 
 import static org.acme.scaffolding.Utils.notSupported;
 
 @Path("/reactive-orm-sp")
-public class HibernateReactiveStoredProcedureResource {
+public class HibernateReactiveStoredProcedureResource implements ReactiveStoredProcedureEndpoints {
 
     @Inject
     Mutiny.SessionFactory sessionFactory;
 
-    @GET
-    @Path("/profile")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Override
     public String profile() {
         return DatabaseProfileProducer.getDelegateName(sessionFactory);
     }
 
-    @POST
-    @Path("/no-params")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Override
     public Uni<String> callNoParams() {
         return sessionFactory.withTransaction((session, tx) ->
                 session.createNativeQuery(switch (DatabaseProfile.current()) {
@@ -48,10 +39,8 @@ public class HibernateReactiveStoredProcedureResource {
         );
     }
 
-    @POST
-    @Path("/input-params")
-    @Produces(MediaType.TEXT_PLAIN)
-    public Uni<String> callWithInputParams(@RestQuery String username) {
+    @Override
+    public Uni<String> callWithInputParams(String username) {
         return sessionFactory.withTransaction((session, tx) ->
                 session.createNativeQuery(switch (DatabaseProfile.current()) {
                             case MSSQL -> "EXECUTE sp_add_activity_with_user :username";
@@ -63,16 +52,12 @@ public class HibernateReactiveStoredProcedureResource {
         );
     }
 
-    @GET
-    @Path("/output-params")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Override
     public Uni<Integer> callWithOutputParams() {
         throw notSupported("Hibernate Reactive has no dedicated support for procedure calls, thus output parameters are not supported.");
     }
 
-    @GET
-    @Path("/return-data-result-set")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Override
     public Uni<List<ReturnedUser>> callReturningDataAsResultSet() {
         if (DatabaseProfile.current() == DatabaseProfile.ORACLE) {
             throw notSupported("Vert.x Reactive SQL Clients have no dedicated support for procedure calls, thus Oracle's cursor-returning functions are not supported.");
@@ -90,9 +75,7 @@ public class HibernateReactiveStoredProcedureResource {
         );
     }
 
-    @GET
-    @Path("/return-data-basic-type")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Override
     public Uni<Integer> callReturningDataAsBasicType() {
         return sessionFactory.withTransaction(session ->
                 session.createNativeQuery(switch (DatabaseProfile.current()) {
@@ -106,9 +89,7 @@ public class HibernateReactiveStoredProcedureResource {
         );
     }
 
-    @GET
-    @Path("/return-data-entities-no-association")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Override
     public Uni<List<UserProfile>> callReturningDataAsEntitiesNoAssociation() {
         if (DatabaseProfile.current() == DatabaseProfile.ORACLE) {
             throw notSupported("Vert.x Reactive SQL Clients have no dedicated support for procedure calls, thus Oracle's cursor-returning functions are not supported.");
@@ -135,10 +116,8 @@ public class HibernateReactiveStoredProcedureResource {
         );
     }
 
-    @GET
-    @Path("/return-data-entities-toone")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Uni<List<UserActivity>> callReturningDataAsEntitiesToOne() {
+    @Override
+    public Uni<List<UserActivity>> callReturningDataAsEntitiesWithToOne() {
         if (DatabaseProfile.current() == DatabaseProfile.ORACLE) {
             throw notSupported("Vert.x Reactive SQL Clients have no dedicated support for procedure calls, thus Oracle's cursor-returning functions are not supported.");
         }
@@ -171,9 +150,7 @@ public class HibernateReactiveStoredProcedureResource {
         );
     }
 
-    @GET
-    @Path("/cursor")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Override
     public Uni<List<ReturnedUser>> callWithCursor() {
         throw notSupported("Hibernate Reactive has no dedicated support for procedure calls, thus output parameters are not supported.");
     }

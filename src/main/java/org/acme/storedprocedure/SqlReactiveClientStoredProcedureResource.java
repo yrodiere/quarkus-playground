@@ -4,37 +4,29 @@ import io.smallrye.mutiny.Uni;
 import io.vertx.mutiny.sqlclient.Pool;
 import io.vertx.mutiny.sqlclient.Tuple;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.MediaType;
-import org.acme.scaffolding.DatabaseProfile;
-import org.acme.scaffolding.DatabaseProfileProducer;
 import org.acme.model.ReturnedUser;
 import org.acme.model.UserActivity;
-import org.jboss.resteasy.reactive.RestQuery;
+import org.acme.model.UserProfile;
+import org.acme.scaffolding.DatabaseProfile;
+import org.acme.scaffolding.DatabaseProfileProducer;
 
 import java.util.List;
 
 import static org.acme.scaffolding.Utils.notSupported;
 
 @Path("/reactive-sp")
-public class SqlReactiveClientStoredProcedureResource {
+public class SqlReactiveClientStoredProcedureResource implements ReactiveStoredProcedureEndpoints {
 
     @Inject
     Pool client;
 
-    @GET
-    @Path("/profile")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Override
     public String profile() {
         return DatabaseProfileProducer.getDelegateName(client);
     }
 
-    @POST
-    @Path("/no-params")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Override
     public Uni<String> callNoParams() {
         return client.query(switch (DatabaseProfile.current()) {
                     case MSSQL -> "EXECUTE sp_add_activity";
@@ -44,10 +36,8 @@ public class SqlReactiveClientStoredProcedureResource {
                 .map(rows -> "Activity added via Reactive SQL");
     }
 
-    @POST
-    @Path("/input-params")
-    @Produces(MediaType.TEXT_PLAIN)
-    public Uni<String> callWithInputParams(@RestQuery String username) {
+    @Override
+    public Uni<String> callWithInputParams(String username) {
         return client.preparedQuery(switch (DatabaseProfile.current()) {
                     case MSSQL -> "EXECUTE sp_add_activity_with_user @p1";
                     case ORACLE -> "CALL sp_add_activity_with_user(?)";
@@ -57,16 +47,12 @@ public class SqlReactiveClientStoredProcedureResource {
                 .map(rows -> "Activity added for user: " + username);
     }
 
-    @GET
-    @Path("/output-params")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Override
     public Uni<Integer> callWithOutputParams() {
         throw notSupported("Vert.x Reactive SQL Clients have no dedicated support for procedure calls, thus output parameters are not supported.");
     }
 
-    @GET
-    @Path("/return-data-result-set")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Override
     public Uni<List<ReturnedUser>> callReturningDataAsResultSet() {
         if (DatabaseProfile.current() == DatabaseProfile.ORACLE) {
             throw notSupported("Vert.x Reactive SQL Clients have no dedicated support for procedure calls, thus Oracle's cursor-returning functions are not supported.");
@@ -77,9 +63,7 @@ public class SqlReactiveClientStoredProcedureResource {
                 .map(rows -> rows.stream().toList());
     }
 
-    @GET
-    @Path("/return-data-basic-type")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Override
     public Uni<Integer> callReturningDataAsBasicType() {
         return client.query(switch (DatabaseProfile.current()) {
                     // MSSQL requires an explicit schema here
@@ -93,24 +77,18 @@ public class SqlReactiveClientStoredProcedureResource {
                 });
     }
 
-    @GET
-    @Path("/return-data-entities-no-association")
-    @Produces(MediaType.APPLICATION_JSON)
-    public List<UserActivity> callReturningDataAsEntitiesNoAssociation() {
+    @Override
+    public Uni<List<UserProfile>> callReturningDataAsEntitiesNoAssociation() {
         throw notSupported("Entities and persistence context do not make sense with raw Vert.x Reactive SQL clients");
     }
 
-    @GET
-    @Path("/return-data-entities-toone")
-    @Produces(MediaType.APPLICATION_JSON)
-    public List<UserActivity> callReturningDataAsEntitiesWithToOne() {
+    @Override
+    public Uni<List<UserActivity>> callReturningDataAsEntitiesWithToOne() {
         throw notSupported("Entities and persistence context do not make sense with raw Vert.x Reactive SQL clients");
     }
 
 
-    @GET
-    @Path("/cursor")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Override
     public Uni<List<ReturnedUser>> callWithCursor() {
         throw notSupported("Vert.x Reactive SQL Clients have no dedicated support for procedure calls, thus output parameters are not supported.");
     }

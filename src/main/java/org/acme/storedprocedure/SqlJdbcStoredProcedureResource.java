@@ -2,17 +2,12 @@ package org.acme.storedprocedure;
 
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.MediaType;
+import org.acme.model.ReturnedUser;
+import org.acme.model.UserActivity;
 import org.acme.model.UserProfile;
 import org.acme.scaffolding.DatabaseProfile;
 import org.acme.scaffolding.DatabaseProfileProducer;
-import org.acme.model.ReturnedUser;
-import org.acme.model.UserActivity;
-import org.jboss.resteasy.reactive.RestQuery;
 
 import javax.sql.DataSource;
 import java.sql.CallableStatement;
@@ -29,21 +24,17 @@ import static org.acme.scaffolding.Utils.notSupported;
 
 @Path("/jdbc-sp")
 @Transactional(rollbackOn = Exception.class)
-public class SqlJdbcStoredProcedureResource {
+public class SqlJdbcStoredProcedureResource implements StoredProcedureEndpoints {
 
     @Inject
     DataSource dataSource;
 
-    @GET
-    @Path("/profile")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Override
     public String profile() {
         return DatabaseProfileProducer.getDelegateName(dataSource);
     }
 
-    @POST
-    @Path("/no-params")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Override
     public String callNoParams() throws SQLException {
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement()) {
@@ -55,10 +46,8 @@ public class SqlJdbcStoredProcedureResource {
         }
     }
 
-    @POST
-    @Path("/input-params")
-    @Produces(MediaType.TEXT_PLAIN)
-    public String callWithInputParams(@RestQuery String username) throws SQLException {
+    @Override
+    public String callWithInputParams(String username) throws SQLException {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(switch (DatabaseProfile.current()) {
                  case MSSQL -> "EXECUTE sp_add_activity_with_user ?";
@@ -70,9 +59,7 @@ public class SqlJdbcStoredProcedureResource {
         }
     }
 
-    @GET
-    @Path("/output-params")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Override
     public Integer callWithOutputParams() throws SQLException {
         try (Connection conn = dataSource.getConnection();
              CallableStatement stmt = conn.prepareCall(
@@ -86,9 +73,7 @@ public class SqlJdbcStoredProcedureResource {
         }
     }
 
-    @GET
-    @Path("/return-data-result-set")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Override
     public List<ReturnedUser> callReturningDataAsResultSet() throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
             switch (DatabaseProfile.current()) {
@@ -120,9 +105,7 @@ public class SqlJdbcStoredProcedureResource {
         return results;
     }
 
-    @GET
-    @Path("/return-data-basic-type")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Override
     public Integer callReturningDataAsBasicType() throws SQLException {
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement();
@@ -138,23 +121,17 @@ public class SqlJdbcStoredProcedureResource {
         }
     }
 
-    @GET
-    @Path("/return-data-entities-no-association")
-    @Produces(MediaType.APPLICATION_JSON)
-    public List<UserActivity> callReturningDataAsEntitiesNoAssociation() {
+    @Override
+    public List<UserProfile> callReturningDataAsEntitiesNoAssociation() {
         throw notSupported("Entities and persistence context do not make sense with raw JDBC");
     }
 
-    @GET
-    @Path("/return-data-entities-toone")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Override
     public List<UserActivity> callReturningDataAsEntitiesWithToOne() {
         throw notSupported("Entities and persistence context do not make sense with raw JDBC");
     }
 
-    @GET
-    @Path("/cursor")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Override
     public List<ReturnedUser> callWithCursor() throws SQLException {
         if (DatabaseProfile.current() == DatabaseProfile.MSSQL) {
             throw notSupported("The MSSQL JDBC driver does not support cursors in output parameters.");
