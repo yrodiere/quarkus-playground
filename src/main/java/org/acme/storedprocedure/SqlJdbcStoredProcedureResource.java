@@ -35,7 +35,7 @@ public class SqlJdbcStoredProcedureResource implements StoredProcedureEndpoints 
     }
 
     @Override
-    public String callNoParams() throws SQLException {
+    public String callProcedureWithoutParams() throws SQLException {
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement()) {
             stmt.execute(switch (DatabaseProfile.current()) {
@@ -47,7 +47,7 @@ public class SqlJdbcStoredProcedureResource implements StoredProcedureEndpoints 
     }
 
     @Override
-    public String callWithInputParams(String username) throws SQLException {
+    public String callProcedureWithInputParams(String username) throws SQLException {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(switch (DatabaseProfile.current()) {
                  case MSSQL -> "EXECUTE sp_add_activity_with_user ?";
@@ -59,8 +59,59 @@ public class SqlJdbcStoredProcedureResource implements StoredProcedureEndpoints 
         }
     }
 
+    // ===== Functions (with return values) =====
+
     @Override
-    public Integer callWithOutputParams() throws SQLException {
+    public Integer callFunctionReturningBasicType() throws SQLException {
+        try (Connection conn = dataSource.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(switch (DatabaseProfile.current()) {
+                 // MSSQL requires an explicit schema here
+                 case MSSQL -> "SELECT dbo.fn_count_active_users()";
+                 default -> "SELECT fn_count_active_users()";
+             })) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+            return 0;
+        }
+    }
+
+    @Override
+    public List<ReturnedUser> callFunctionReturningTuples() throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            switch (DatabaseProfile.current()) {
+                case ORACLE -> {
+                    try (CallableStatement stmt = conn.prepareCall("{ ? = call fn_get_active_users() }")) {
+                        stmt.registerOutParameter(1, Types.REF_CURSOR);
+                        stmt.execute();
+                        return toReturnedUsers((ResultSet) stmt.getObject(1));
+                    }
+                }
+                default -> {
+                    try (Statement stmt = conn.createStatement();
+                         ResultSet rs = stmt.executeQuery("SELECT * FROM fn_get_active_users()")) {
+                        return toReturnedUsers(rs);
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public List<UserProfile> callFunctionReturningEntitiesNoAssociation() {
+        throw notSupported("Entities and persistence context do not make sense with raw JDBC");
+    }
+
+    @Override
+    public List<UserActivity> callFunctionReturningEntitiesWithToOne() {
+        throw notSupported("Entities and persistence context do not make sense with raw JDBC");
+    }
+
+    // ===== Procedures (with output parameters) =====
+
+    @Override
+    public Integer callProcedureWithOutputParamBasicType() throws SQLException {
         try (Connection conn = dataSource.getConnection();
              CallableStatement stmt = conn.prepareCall(
                      switch (DatabaseProfile.current()) {
@@ -74,24 +125,36 @@ public class SqlJdbcStoredProcedureResource implements StoredProcedureEndpoints 
     }
 
     @Override
-    public List<ReturnedUser> callReturningDataAsResultSet() throws SQLException {
+    public List<ReturnedUser> callProcedureWithOutputParamTuples() throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
             switch (DatabaseProfile.current()) {
-                case ORACLE -> {
-                    try (CallableStatement stmt = conn.prepareCall("{ ? = call sp_get_active_users_result_set() }")) {
+                case MSSQL -> {
+                    // MSSQL doesn't support REF_CURSOR, returns result set directly; see README section "Calling more complex procedures"
+                    try (Statement stmt = conn.createStatement();
+                         ResultSet rs = stmt.executeQuery("EXECUTE sp_get_active_users")) {
+                        return toReturnedUsers(rs);
+                    }
+                }
+                default -> {
+                    // PostgreSQL and Oracle use REF_CURSOR output parameter
+                    try (CallableStatement stmt = conn.prepareCall("CALL sp_get_active_users(?)")) {
                         stmt.registerOutParameter(1, Types.REF_CURSOR);
                         stmt.execute();
                         return toReturnedUsers((ResultSet) stmt.getObject(1));
                     }
                 }
-                default -> {
-                    try (Statement stmt = conn.createStatement();
-                         ResultSet rs = stmt.executeQuery("SELECT * FROM sp_get_active_users_result_set()")) {
-                        return toReturnedUsers(rs);
-                    }
-                }
             }
         }
+    }
+
+    @Override
+    public List<UserProfile> callProcedureWithOutputParamEntitiesNoAssociation() {
+        throw notSupported("Entities and persistence context do not make sense with raw JDBC");
+    }
+
+    @Override
+    public List<UserActivity> callProcedureWithOutputParamEntitiesWithToOne() {
+        throw notSupported("Entities and persistence context do not make sense with raw JDBC");
     }
 
     private List<ReturnedUser> toReturnedUsers(ResultSet rs) throws SQLException {
@@ -103,54 +166,5 @@ public class SqlJdbcStoredProcedureResource implements StoredProcedureEndpoints 
             ));
         }
         return results;
-    }
-
-    @Override
-    public Integer callReturningDataAsBasicType() throws SQLException {
-        try (Connection conn = dataSource.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(switch (DatabaseProfile.current()) {
-                 // MSSQL requires an explicit schema here
-                 case MSSQL -> "SELECT dbo.sp_count_active_users_as_return()";
-                 default -> "SELECT sp_count_active_users_as_return()";
-             })) {
-            if (rs.next()) {
-                return rs.getInt(1);
-            }
-            return 0;
-        }
-    }
-
-    @Override
-    public List<UserProfile> callReturningDataAsEntitiesNoAssociation() {
-        throw notSupported("Entities and persistence context do not make sense with raw JDBC");
-    }
-
-    @Override
-    public List<UserActivity> callReturningDataAsEntitiesWithToOne() {
-        throw notSupported("Entities and persistence context do not make sense with raw JDBC");
-    }
-
-    @Override
-    public List<ReturnedUser> callWithCursor() throws SQLException {
-        if (DatabaseProfile.current() == DatabaseProfile.MSSQL) {
-            throw notSupported("The MSSQL JDBC driver does not support cursors in output parameters.");
-        }
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement stmt = conn.prepareCall("CALL sp_get_users_cursor(?)")) {
-            stmt.registerOutParameter(1, Types.REF_CURSOR);
-            stmt.execute();
-
-            List<ReturnedUser> results = new ArrayList<>();
-            try (ResultSet rs = (ResultSet) stmt.getObject(1)) {
-                while (rs.next()) {
-                    results.add(new ReturnedUser(
-                            rs.getString("username"),
-                            rs.getString("fullname")
-                    ));
-                }
-            }
-            return results;
-        }
     }
 }

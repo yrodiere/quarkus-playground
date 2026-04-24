@@ -28,7 +28,7 @@ public class HibernateReactiveStoredProcedureResource implements ReactiveStoredP
     }
 
     @Override
-    public Uni<String> callNoParams() {
+    public Uni<String> callProcedureWithoutParams() {
         return sessionFactory.withTransaction((session, tx) ->
                 session.createNativeQuery(switch (DatabaseProfile.current()) {
                             case MSSQL -> "EXECUTE sp_add_activity";
@@ -40,7 +40,7 @@ public class HibernateReactiveStoredProcedureResource implements ReactiveStoredP
     }
 
     @Override
-    public Uni<String> callWithInputParams(String username) {
+    public Uni<String> callProcedureWithInputParams(String username) {
         return sessionFactory.withTransaction((session, tx) ->
                 session.createNativeQuery(switch (DatabaseProfile.current()) {
                             case MSSQL -> "EXECUTE sp_add_activity_with_user :username";
@@ -52,106 +52,114 @@ public class HibernateReactiveStoredProcedureResource implements ReactiveStoredP
         );
     }
 
-    @Override
-    public Uni<Integer> callWithOutputParams() {
-        throw notSupported("Hibernate Reactive has no dedicated support for procedure calls, thus output parameters are not supported.");
-    }
+    // ===== Functions (with return values) =====
 
     @Override
-    public Uni<List<ReturnedUser>> callReturningDataAsResultSet() {
-        if (DatabaseProfile.current() == DatabaseProfile.ORACLE) {
-            throw notSupported("Vert.x Reactive SQL Clients have no dedicated support for procedure calls, thus Oracle's cursor-returning functions are not supported.");
-        }
-        return sessionFactory.withTransaction(session ->
-                session.createNativeQuery("SELECT * FROM sp_get_active_users_result_set()",
-                                session.getResultSetMapping(ReturnedUser.class, ReturnedUser.RESULT_SET_MAPPING),
-                                // WARNING: the persistence context might not have been flushed to the database,
-                                // which could cause the native call to return outdated information.
-                                // For example there might have been changes to UserActivity or UserProfile entities
-                                // in the session which have not been flushed and would affect the count of active users.
-                                // The following argument instructs Hibernate Reactive to flush any such change before calling the procedure.
-                                new AffectedEntities(UserActivity.class, UserProfile.class))
-                        .getResultList()
-        );
-    }
-
-    @Override
-    public Uni<Integer> callReturningDataAsBasicType() {
+    public Uni<Integer> callFunctionReturningBasicType() {
         return sessionFactory.withTransaction(session ->
                 session.createNativeQuery(switch (DatabaseProfile.current()) {
-                            // MSSQL requires an explicit schema here
-                            case MSSQL -> "SELECT dbo.sp_count_active_users_as_return()";
-                            default -> "SELECT sp_count_active_users_as_return()";
-                        }, Integer.class,
-                                // See callReturningDataAsResultSet for why this is sometimes necessary.
+                                    // MSSQL requires an explicit schema here
+                                    case MSSQL -> "SELECT dbo.fn_count_active_users()";
+                                    default -> "SELECT fn_count_active_users()";
+                                }, Integer.class,
+                                // This is sometimes necessary, but not always; see README section "Persistence context synchronization"
                                 new AffectedEntities(UserActivity.class, UserProfile.class))
                         .getSingleResult()
         );
     }
 
     @Override
-    public Uni<List<UserProfile>> callReturningDataAsEntitiesNoAssociation() {
-        if (DatabaseProfile.current() == DatabaseProfile.ORACLE) {
-            throw notSupported("Vert.x Reactive SQL Clients have no dedicated support for procedure calls, thus Oracle's cursor-returning functions are not supported.");
+    public Uni<List<ReturnedUser>> callFunctionReturningTuples() {
+        switch (DatabaseProfile.current()) {
+            case ORACLE -> {
+                throw notSupported("Hibernate Reactive has no dedicated API for procedure calls, thus Oracle's cursor-returning functions are not supported.");
+            }
+            default -> {
+                return sessionFactory.withTransaction(session ->
+                        session.createNativeQuery("SELECT * FROM fn_get_active_users()",
+                                        session.getResultSetMapping(ReturnedUser.class, ReturnedUser.RESULT_SET_MAPPING),
+                                        // This is sometimes necessary, but not always; see README section "Persistence context synchronization"
+                                        new AffectedEntities(UserActivity.class, UserProfile.class))
+                                .getResultList()
+                );
+            }
         }
-        // WARNING: The stored procedure must return all columns needed to construct the entity instance;
-        // missing columns will lead to "org.hibernate.exception.SQLGrammarException: Unable to find column position by name".
-        return sessionFactory.withTransaction(session ->
-                session.createNativeQuery("SELECT * FROM sp_get_active_profiles()", UserProfile.class,
-                                // See callReturningDataAsResultSet for why this is sometimes necessary.
-                                new AffectedEntities(UserActivity.class, UserProfile.class))
-                        .getResultList()
-                        // The following are just checks and would not be present in an actual application.
-                        .map(results -> {
-                            for (UserProfile result : results) {
-                                // Entities are attached to the session, allowing lazy-loading, dirty-tracking, etc.
-                                assert session.contains(result);
-                                // WARNING: unowned or to-many associations cannot be initialized eagerly from the result set returned by the procedure.
-                                // Owned to-one associations can be initialized through a custom result set mapping:
-                                // see https://docs.hibernate.org/orm/7.3/userguide/html_single/#sql-entity-named-queries
-                                assert !Hibernate.isInitialized(result.activities);
-                            }
-                            return results;
-                        })
-        );
     }
 
     @Override
-    public Uni<List<UserActivity>> callReturningDataAsEntitiesWithToOne() {
-        if (DatabaseProfile.current() == DatabaseProfile.ORACLE) {
-            throw notSupported("Vert.x Reactive SQL Clients have no dedicated support for procedure calls, thus Oracle's cursor-returning functions are not supported.");
+    public Uni<List<UserProfile>> callFunctionReturningEntitiesNoAssociation() {
+        switch (DatabaseProfile.current()) {
+            case ORACLE -> {
+                throw notSupported("Hibernate Reactive has no dedicated API for procedure calls, thus Oracle's cursor-returning functions are not supported.");
+            }
+            default -> {
+                return sessionFactory.withTransaction(session ->
+                        session.createNativeQuery("SELECT * FROM fn_get_active_profiles()", UserProfile.class,
+                                        // This is sometimes necessary, but not always; see README section "Persistence context synchronization"
+                                        new AffectedEntities(UserActivity.class, UserProfile.class))
+                                .getResultList()
+                                // The following are checks demonstrating README section "Entity mapping completeness and persistence context"
+                                .map(results -> {
+                                    for (UserProfile result : results) {
+                                        assert session.contains(result);
+                                        assert !Hibernate.isInitialized(result.activities);
+                                    }
+                                    return results;
+                                })
+                );
+            }
         }
-        if (true) {
-            throw notSupported("See https://github.com/hibernate/hibernate-reactive/issues/3616");
-        }
-        // WARNING: The stored procedure must return all columns needed to construct the entity instance;
-        // missing columns will lead to "org.hibernate.exception.SQLGrammarException: Unable to find column position by name".
-        return sessionFactory.withTransaction(session ->
-                session.createNativeQuery("SELECT * FROM sp_get_activities_with_profiles()",
-                                session.getResultSetMapping(UserActivity.class, UserActivity.RESULT_SET_MAPPING_WITH_PROFILE),
-                                // See callReturningDataAsResultSet for why this is sometimes necessary.
-                                new AffectedEntities(UserActivity.class, UserProfile.class))
-                        .getResultList()
-                        // The following are just checks and would not be present in an actual application.
-                        .map(results -> {
-                            for (UserActivity result : results) {
-                                // Entities are attached to the session, allowing lazy-loading, dirty-tracking, etc.
-                                assert session.contains(result);
-                                // WARNING: to-many associations cannot be initialized eagerly from the result set returned by the procedure.
-                                // Owned, to-one associations can be initialized through a custom mapping (like in callReturningDataAsEntitiesWithAssociation).
-                                // With more Hibernate-native ways to retrieve entities -- e.g. JPQL/HQL queries, Criteria queries,
-                                // or find()/findMultiple() with an entity graph -- any association could be fetched eagerly.
-                                // Multiple SQL statements may be needed, but they can generally be batched (no N+1 select).
-                                assert Hibernate.isInitialized(result.profile);
-                                assert Hibernate.isPropertyInitialized(result.profile, "fullName");
-                            }
-                            return results;
-                        })
-        );
     }
 
     @Override
-    public Uni<List<ReturnedUser>> callWithCursor() {
-        throw notSupported("Hibernate Reactive has no dedicated support for procedure calls, thus output parameters are not supported.");
+    public Uni<List<UserActivity>> callFunctionReturningEntitiesWithToOne() {
+        switch (DatabaseProfile.current()) {
+            case ORACLE -> {
+                throw notSupported("Hibernate Reactive has no dedicated API for procedure calls, thus Oracle's cursor-returning functions are not supported.");
+            }
+            default -> {
+                if (true) {
+                    throw notSupported("See https://github.com/hibernate/hibernate-reactive/issues/3616");
+                }
+                return sessionFactory.withTransaction(session ->
+                        session.createNativeQuery("SELECT * FROM fn_get_activities_with_profiles()",
+                                        session.getResultSetMapping(UserActivity.class, UserActivity.RESULT_SET_MAPPING_WITH_PROFILE),
+                                        // This is sometimes necessary, but not always; see README section "Persistence context synchronization"
+                                        new AffectedEntities(UserActivity.class, UserProfile.class))
+                                .getResultList()
+                                // The following are checks demonstrating README section "Entity mapping completeness and persistence context"
+                                .map(results -> {
+                                    for (UserActivity result : results) {
+                                        assert session.contains(result);
+                                        assert Hibernate.isInitialized(result.profile);
+                                        assert Hibernate.isPropertyInitialized(result.profile, "fullName");
+                                    }
+                                    return results;
+                                })
+                );
+            }
+        }
+    }
+
+    // ===== Procedures (with output parameters) =====
+
+    @Override
+    public Uni<Integer> callProcedureWithOutputParamBasicType() {
+        throw notSupported("Hibernate Reactive has no dedicated API for procedure calls, thus output parameters are not supported.");
+    }
+
+    @Override
+    public Uni<List<ReturnedUser>> callProcedureWithOutputParamTuples() {
+        throw notSupported("Hibernate Reactive has no dedicated API for procedure calls, thus output parameters are not supported.");
+    }
+
+    @Override
+    public Uni<List<UserProfile>> callProcedureWithOutputParamEntitiesNoAssociation() {
+        throw notSupported("Hibernate Reactive has no dedicated API for procedure calls, thus output parameters are not supported.");
+    }
+
+    @Override
+    public Uni<List<UserActivity>> callProcedureWithOutputParamEntitiesWithToOne() {
+        throw notSupported("Hibernate Reactive has no dedicated API for procedure calls, thus output parameters are not supported.");
     }
 }

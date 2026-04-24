@@ -7,8 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.hasItems;
 
 public abstract class AbstractStoredProcedureTest {
@@ -33,7 +32,7 @@ public abstract class AbstractStoredProcedureTest {
     }
 
     @Test
-    public void testCallNoParams() {
+    public void testCallProcedureWithoutParams() {
         given()
                 .when().get("/test-data/activities")
                 .then()
@@ -41,7 +40,7 @@ public abstract class AbstractStoredProcedureTest {
                 .body("size()", is(0));
 
         given()
-                .when().post(getEndpointRoot() + "/no-params")
+                .when().post(getEndpointRoot() + "/procedure/without-params")
                 .then()
                 .statusCode(200);
 
@@ -53,7 +52,7 @@ public abstract class AbstractStoredProcedureTest {
     }
 
     @Test
-    public void testCallWithInputParams() {
+    public void testCallProcedureWithInputParams() {
         given()
                 .when().get("/test-data/activities")
                 .then()
@@ -62,7 +61,7 @@ public abstract class AbstractStoredProcedureTest {
 
         given()
                 .queryParam("username", "alice")
-                .when().post(getEndpointRoot() + "/input-params")
+                .when().post(getEndpointRoot() + "/procedure/with-input-params")
                 .then()
                 .statusCode(200);
 
@@ -75,7 +74,7 @@ public abstract class AbstractStoredProcedureTest {
     }
 
     @Test
-    public void testCallWithOutputParams() {
+    public void testCallProcedureWithOutputParamBasicType() {
         given()
                 .queryParam("username", "bob")
                 .when().post("/test-data/add-activity")
@@ -83,7 +82,7 @@ public abstract class AbstractStoredProcedureTest {
                 .statusCode(200);
 
         given()
-                .when().get(getEndpointRoot() + "/output-params")
+                .when().get(getEndpointRoot() + "/procedure/output-param-basic-type")
                 .then()
                 .statusCode(200)
                 .body(Matchers.is("1"));
@@ -95,14 +94,16 @@ public abstract class AbstractStoredProcedureTest {
                 .statusCode(200);
 
         given()
-                .when().get(getEndpointRoot() + "/output-params")
+                .when().get(getEndpointRoot() + "/procedure/output-param-basic-type")
                 .then()
                 .statusCode(200)
                 .body(Matchers.is("2"));
     }
 
+    // ===== Functions (with return values) =====
+
     @Test
-    public void testCallReturningDataAsResultSet() {
+    public void testCallFunctionReturningBasicType() {
         given()
                 .queryParam("username", "bob")
                 .when().post("/test-data/add-activity")
@@ -110,40 +111,7 @@ public abstract class AbstractStoredProcedureTest {
                 .statusCode(200);
 
         given()
-                .when().get(getEndpointRoot() + "/return-data-result-set")
-                .then()
-                .statusCode(200)
-                .contentType(ContentType.JSON)
-                .body("size()", greaterThanOrEqualTo(1))
-                .body("username", hasItems("bob"))
-                .body("fullName", hasItems("Bob Johnson"));
-
-        given()
-                .queryParam("username", "charlie")
-                .when().post("/test-data/add-activity")
-                .then()
-                .statusCode(200);
-
-        given()
-                .when().get(getEndpointRoot() + "/return-data-result-set")
-                .then()
-                .statusCode(200)
-                .contentType(ContentType.JSON)
-                .body("size()", greaterThanOrEqualTo(2))
-                .body("username", hasItems("bob", "charlie"))
-                .body("fullName", hasItems("Bob Johnson", "Charlie Brown"));
-    }
-
-    @Test
-    public void testCallReturningDataAsBasicType() {
-        given()
-                .queryParam("username", "bob")
-                .when().post("/test-data/add-activity")
-                .then()
-                .statusCode(200);
-
-        given()
-                .when().get(getEndpointRoot() + "/return-data-basic-type")
+                .when().get(getEndpointRoot() + "/function/return-basic-type")
                 .then()
                 .statusCode(200)
                 .body(Matchers.is("1"));
@@ -155,14 +123,14 @@ public abstract class AbstractStoredProcedureTest {
                 .statusCode(200);
 
         given()
-                .when().get(getEndpointRoot() + "/return-data-basic-type")
+                .when().get(getEndpointRoot() + "/function/return-basic-type")
                 .then()
                 .statusCode(200)
                 .body(Matchers.is("2"));
     }
 
     @Test
-    public void testCallReturningDataAsEntitiesNoAssociation() {
+    public void testCallFunctionReturningTuples() {
         given()
                 .queryParam("username", "bob")
                 .when().post("/test-data/add-activity")
@@ -170,11 +138,11 @@ public abstract class AbstractStoredProcedureTest {
                 .statusCode(200);
 
         given()
-                .when().get(getEndpointRoot() + "/return-data-entities-no-association")
+                .when().get(getEndpointRoot() + "/function/return-tuples")
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.JSON)
-                .body("size()", greaterThanOrEqualTo(1))
+                .body("size()", is(1))
                 .body("username", hasItems("bob"))
                 .body("fullName", hasItems("Bob Johnson"));
 
@@ -185,17 +153,17 @@ public abstract class AbstractStoredProcedureTest {
                 .statusCode(200);
 
         given()
-                .when().get(getEndpointRoot() + "/return-data-entities-no-association")
+                .when().get(getEndpointRoot() + "/function/return-tuples")
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.JSON)
-                .body("size()", greaterThanOrEqualTo(2))
+                .body("size()", is(2))
                 .body("username", hasItems("bob", "charlie"))
                 .body("fullName", hasItems("Bob Johnson", "Charlie Brown"));
     }
 
     @Test
-    public void testCallReturningDataAsEntitiesToOne() {
+    public void testCallFunctionReturningEntitiesNoAssociation() {
         given()
                 .queryParam("username", "bob")
                 .when().post("/test-data/add-activity")
@@ -203,11 +171,44 @@ public abstract class AbstractStoredProcedureTest {
                 .statusCode(200);
 
         given()
-                .when().get(getEndpointRoot() + "/return-data-entities-toone")
+                .when().get(getEndpointRoot() + "/function/return-entities-no-association")
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.JSON)
-                .body("size()", greaterThanOrEqualTo(1))
+                .body("size()", is(1))
+                .body("username", hasItems("bob"))
+                .body("fullName", hasItems("Bob Johnson"));
+
+        given()
+                .queryParam("username", "charlie")
+                .when().post("/test-data/add-activity")
+                .then()
+                .statusCode(200);
+
+        given()
+                .when().get(getEndpointRoot() + "/function/return-entities-no-association")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .body("size()", is(2))
+                .body("username", hasItems("bob", "charlie"))
+                .body("fullName", hasItems("Bob Johnson", "Charlie Brown"));
+    }
+
+    @Test
+    public void testCallFunctionReturningEntitiesWithToOne() {
+        given()
+                .queryParam("username", "bob")
+                .when().post("/test-data/add-activity")
+                .then()
+                .statusCode(200);
+
+        given()
+                .when().get(getEndpointRoot() + "/function/return-entities-toone")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .body("size()", is(1))
                 .body("profile.username", hasItems("bob"))
                 .body("profile.fullName", hasItems("Bob Johnson"));
 
@@ -218,18 +219,19 @@ public abstract class AbstractStoredProcedureTest {
                 .statusCode(200);
 
         given()
-                .when().get(getEndpointRoot() + "/return-data-entities-toone")
+                .when().get(getEndpointRoot() + "/function/return-entities-toone")
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.JSON)
-                .body("size()", greaterThanOrEqualTo(2))
+                .body("size()", is(2))
                 .body("profile.username", hasItems("bob", "charlie"))
                 .body("profile.fullName", hasItems("Bob Johnson", "Charlie Brown"));
     }
 
+    // ===== Procedures (with output parameters) =====
+
     @Test
-    public void testCallWithCursor() {
-        // TODO also test using this as a true cursor (multiple batches with flush/clear?)
+    public void testCallProcedureWithOutputParamTuples() {
         given()
                 .queryParam("username", "bob")
                 .when().post("/test-data/add-activity")
@@ -243,12 +245,78 @@ public abstract class AbstractStoredProcedureTest {
                 .statusCode(200);
 
         given()
-                .when().get(getEndpointRoot() + "/cursor")
+                .when().get(getEndpointRoot() + "/procedure/output-param-tuples")
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.JSON)
-                .body("size()", greaterThanOrEqualTo(2))
+                .body("size()", is(2))
                 .body("username", hasItems("bob", "charlie"))
                 .body("fullName", hasItems("Bob Johnson", "Charlie Brown"));
+    }
+
+    @Test
+    public void testCallProcedureWithOutputParamEntitiesNoAssociation() {
+        given()
+                .queryParam("username", "bob")
+                .when().post("/test-data/add-activity")
+                .then()
+                .statusCode(200);
+
+        given()
+                .when().get(getEndpointRoot() + "/procedure/output-param-entities-no-association")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .body("size()", is(1))
+                .body("username", hasItems("bob"))
+                .body("fullName", hasItems("Bob Johnson"));
+
+        given()
+                .queryParam("username", "charlie")
+                .when().post("/test-data/add-activity")
+                .then()
+                .statusCode(200);
+
+        given()
+                .when().get(getEndpointRoot() + "/procedure/output-param-entities-no-association")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .body("size()", is(2))
+                .body("username", hasItems("bob", "charlie"))
+                .body("fullName", hasItems("Bob Johnson", "Charlie Brown"));
+    }
+
+    @Test
+    public void testCallProcedureWithOutputParamEntitiesWithToOne() {
+        given()
+                .queryParam("username", "bob")
+                .when().post("/test-data/add-activity")
+                .then()
+                .statusCode(200);
+
+        given()
+                .when().get(getEndpointRoot() + "/procedure/output-param-entities-toone")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .body("size()", is(1))
+                .body("profile.username", hasItems("bob"))
+                .body("profile.fullName", hasItems("Bob Johnson"));
+
+        given()
+                .queryParam("username", "charlie")
+                .when().post("/test-data/add-activity")
+                .then()
+                .statusCode(200);
+
+        given()
+                .when().get(getEndpointRoot() + "/procedure/output-param-entities-toone")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .body("size()", is(2))
+                .body("profile.username", hasItems("bob", "charlie"))
+                .body("profile.fullName", hasItems("Bob Johnson", "Charlie Brown"));
     }
 }

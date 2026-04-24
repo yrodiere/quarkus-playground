@@ -25,42 +25,56 @@ public interface ReactiveStoredProcedureEndpoints {
     String profile();
 
     @POST
-    @Path("/no-params")
+    @Path("/procedure/without-params")
     @Produces(MediaType.TEXT_PLAIN)
-    Uni<String> callNoParams();
+    Uni<String> callProcedureWithoutParams();
 
     @POST
-    @Path("/input-params")
+    @Path("/procedure/with-input-params")
     @Produces(MediaType.TEXT_PLAIN)
-    Uni<String> callWithInputParams(@RestQuery String username);
+    Uni<String> callProcedureWithInputParams(@RestQuery String username);
+
+    // Functions (with return values)
 
     @GET
-    @Path("/output-params")
+    @Path("/function/return-basic-type")
     @Produces(MediaType.TEXT_PLAIN)
-    Uni<Integer> callWithOutputParams();
+    Uni<Integer> callFunctionReturningBasicType();
 
     @GET
-    @Path("/return-data-result-set")
+    @Path("/function/return-tuples")
     @Produces(MediaType.APPLICATION_JSON)
-    Uni<List<ReturnedUser>> callReturningDataAsResultSet();
+    Uni<List<ReturnedUser>> callFunctionReturningTuples();
 
     @GET
-    @Path("/return-data-basic-type")
+    @Path("/function/return-entities-no-association")
+    @Produces(MediaType.APPLICATION_JSON)
+    Uni<List<UserProfile>> callFunctionReturningEntitiesNoAssociation();
+
+    @GET
+    @Path("/function/return-entities-toone")
+    @Produces(MediaType.APPLICATION_JSON)
+    Uni<List<UserActivity>> callFunctionReturningEntitiesWithToOne();
+
+    // Procedures (with output parameters)
+
+    @GET
+    @Path("/procedure/output-param-basic-type")
     @Produces(MediaType.TEXT_PLAIN)
-    Uni<Integer> callReturningDataAsBasicType();
+    Uni<Integer> callProcedureWithOutputParamBasicType();
 
     @GET
-    @Path("/return-data-entities-no-association")
+    @Path("/procedure/output-param-tuples")
     @Produces(MediaType.APPLICATION_JSON)
-    Uni<List<UserProfile>> callReturningDataAsEntitiesNoAssociation();
+    Uni<List<ReturnedUser>> callProcedureWithOutputParamTuples();
 
     @GET
-    @Path("/return-data-entities-toone")
+    @Path("/procedure/output-param-entities-no-association")
     @Produces(MediaType.APPLICATION_JSON)
-    Uni<List<UserActivity>> callReturningDataAsEntitiesWithToOne();
+    Uni<List<UserProfile>> callProcedureWithOutputParamEntitiesNoAssociation();
 
     @GET
-    @Path("/cursor")
+    @Path("/procedure/output-param-entities-toone")
     @Produces(MediaType.APPLICATION_JSON)
-    Uni<List<ReturnedUser>> callWithCursor();
+    Uni<List<UserActivity>> callProcedureWithOutputParamEntitiesWithToOne();
 }

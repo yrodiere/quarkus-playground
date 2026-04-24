@@ -27,7 +27,7 @@ public class SqlReactiveClientStoredProcedureResource implements ReactiveStoredP
     }
 
     @Override
-    public Uni<String> callNoParams() {
+    public Uni<String> callProcedureWithoutParams() {
         return client.query(switch (DatabaseProfile.current()) {
                     case MSSQL -> "EXECUTE sp_add_activity";
                     default -> "CALL sp_add_activity()";
@@ -37,7 +37,7 @@ public class SqlReactiveClientStoredProcedureResource implements ReactiveStoredP
     }
 
     @Override
-    public Uni<String> callWithInputParams(String username) {
+    public Uni<String> callProcedureWithInputParams(String username) {
         return client.preparedQuery(switch (DatabaseProfile.current()) {
                     case MSSQL -> "EXECUTE sp_add_activity_with_user @p1";
                     case ORACLE -> "CALL sp_add_activity_with_user(?)";
@@ -47,28 +47,14 @@ public class SqlReactiveClientStoredProcedureResource implements ReactiveStoredP
                 .map(rows -> "Activity added for user: " + username);
     }
 
-    @Override
-    public Uni<Integer> callWithOutputParams() {
-        throw notSupported("Vert.x Reactive SQL Clients have no dedicated support for procedure calls, thus output parameters are not supported.");
-    }
+    // ===== Functions (with return values) =====
 
     @Override
-    public Uni<List<ReturnedUser>> callReturningDataAsResultSet() {
-        if (DatabaseProfile.current() == DatabaseProfile.ORACLE) {
-            throw notSupported("Vert.x Reactive SQL Clients have no dedicated support for procedure calls, thus Oracle's cursor-returning functions are not supported.");
-        }
-        return client.query("SELECT * FROM sp_get_active_users_result_set()")
-                .mapping(row -> new ReturnedUser(row.getString("username"), row.getString("fullname")))
-                .execute()
-                .map(rows -> rows.stream().toList());
-    }
-
-    @Override
-    public Uni<Integer> callReturningDataAsBasicType() {
+    public Uni<Integer> callFunctionReturningBasicType() {
         return client.query(switch (DatabaseProfile.current()) {
                     // MSSQL requires an explicit schema here
-                    case MSSQL -> "SELECT dbo.sp_count_active_users_as_return()";
-                    default -> "SELECT sp_count_active_users_as_return()";
+                    case MSSQL -> "SELECT dbo.fn_count_active_users()";
+                    default -> "SELECT fn_count_active_users()";
                 })
                 .execute()
                 .map(rows -> {
@@ -78,18 +64,50 @@ public class SqlReactiveClientStoredProcedureResource implements ReactiveStoredP
     }
 
     @Override
-    public Uni<List<UserProfile>> callReturningDataAsEntitiesNoAssociation() {
+    public Uni<List<ReturnedUser>> callFunctionReturningTuples() {
+        switch (DatabaseProfile.current()) {
+            case ORACLE -> {
+                // Vert.x Reactive SQL Clients have no dedicated API for procedure calls, thus Oracle's cursor-returning functions are not supported
+                throw notSupported("Vert.x Reactive SQL Clients have no dedicated API for procedure calls, thus Oracle's cursor-returning functions are not supported.");
+            }
+            default -> {
+                return client.query("SELECT * FROM fn_get_active_users()")
+                        .mapping(row -> new ReturnedUser(row.getString("username"), row.getString("fullname")))
+                        .execute()
+                        .map(rows -> rows.stream().toList());
+            }
+        }
+    }
+
+    @Override
+    public Uni<List<UserProfile>> callFunctionReturningEntitiesNoAssociation() {
         throw notSupported("Entities and persistence context do not make sense with raw Vert.x Reactive SQL clients");
     }
 
     @Override
-    public Uni<List<UserActivity>> callReturningDataAsEntitiesWithToOne() {
+    public Uni<List<UserActivity>> callFunctionReturningEntitiesWithToOne() {
         throw notSupported("Entities and persistence context do not make sense with raw Vert.x Reactive SQL clients");
     }
 
+    // ===== Procedures (with output parameters) =====
 
     @Override
-    public Uni<List<ReturnedUser>> callWithCursor() {
-        throw notSupported("Vert.x Reactive SQL Clients have no dedicated support for procedure calls, thus output parameters are not supported.");
+    public Uni<Integer> callProcedureWithOutputParamBasicType() {
+        throw notSupported("Vert.x Reactive SQL Clients have no dedicated API for procedure calls, thus output parameters are not supported.");
+    }
+
+    @Override
+    public Uni<List<ReturnedUser>> callProcedureWithOutputParamTuples() {
+        throw notSupported("Vert.x Reactive SQL Clients have no dedicated API for procedure calls, thus output parameters are not supported.");
+    }
+
+    @Override
+    public Uni<List<UserProfile>> callProcedureWithOutputParamEntitiesNoAssociation() {
+        throw notSupported("Entities and persistence context do not make sense with raw Vert.x Reactive SQL clients");
+    }
+
+    @Override
+    public Uni<List<UserActivity>> callProcedureWithOutputParamEntitiesWithToOne() {
+        throw notSupported("Entities and persistence context do not make sense with raw Vert.x Reactive SQL clients");
     }
 }

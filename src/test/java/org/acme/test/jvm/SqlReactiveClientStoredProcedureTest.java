@@ -14,13 +14,25 @@ public class SqlReactiveClientStoredProcedureTest extends AbstractStoredProcedur
 
     @Override
     @Disabled("Entities and persistence context do not make sense with raw Vert.x Reactive SQL clients")
-    public void testCallReturningDataAsEntitiesNoAssociation() {
-        super.testCallReturningDataAsEntitiesNoAssociation();
+    public void testCallFunctionReturningEntitiesNoAssociation() {
+        super.testCallFunctionReturningEntitiesNoAssociation();
     }
 
     @Override
     @Disabled("Entities and persistence context do not make sense with raw Vert.x Reactive SQL clients")
-    public void testCallReturningDataAsEntitiesToOne() {
-        super.testCallReturningDataAsEntitiesToOne();
+    public void testCallFunctionReturningEntitiesWithToOne() {
+        super.testCallFunctionReturningEntitiesWithToOne();
+    }
+
+    @Override
+    @Disabled("Entities and persistence context do not make sense with raw Vert.x Reactive SQL clients")
+    public void testCallProcedureWithOutputParamEntitiesNoAssociation() {
+        super.testCallProcedureWithOutputParamEntitiesNoAssociation();
+    }
+
+    @Override
+    @Disabled("Entities and persistence context do not make sense with raw Vert.x Reactive SQL clients")
+    public void testCallProcedureWithOutputParamEntitiesWithToOne() {
+        super.testCallProcedureWithOutputParamEntitiesWithToOne();
     }
 }

@@ -14,13 +14,25 @@ public class SqlJdbcStoredProcedureTest extends AbstractStoredProcedureTest {
 
     @Override
     @Disabled("Entities and persistence context do not make sense with raw JDBC")
-    public void testCallReturningDataAsEntitiesNoAssociation() {
-        super.testCallReturningDataAsEntitiesNoAssociation();
+    public void testCallFunctionReturningEntitiesNoAssociation() {
+        super.testCallFunctionReturningEntitiesNoAssociation();
     }
 
     @Override
     @Disabled("Entities and persistence context do not make sense with raw JDBC")
-    public void testCallReturningDataAsEntitiesToOne() {
-        super.testCallReturningDataAsEntitiesToOne();
+    public void testCallFunctionReturningEntitiesWithToOne() {
+        super.testCallFunctionReturningEntitiesWithToOne();
+    }
+
+    @Override
+    @Disabled("Entities and persistence context do not make sense with raw JDBC")
+    public void testCallProcedureWithOutputParamEntitiesNoAssociation() {
+        super.testCallProcedureWithOutputParamEntitiesNoAssociation();
+    }
+
+    @Override
+    @Disabled("Entities and persistence context do not make sense with raw JDBC")
+    public void testCallProcedureWithOutputParamEntitiesWithToOne() {
+        super.testCallProcedureWithOutputParamEntitiesWithToOne();
     }
 }

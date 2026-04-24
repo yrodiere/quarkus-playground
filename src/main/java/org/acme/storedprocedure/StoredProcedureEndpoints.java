@@ -24,42 +24,56 @@ public interface StoredProcedureEndpoints {
     String profile();
 
     @POST
-    @Path("/no-params")
+    @Path("/procedure/without-params")
     @Produces(MediaType.TEXT_PLAIN)
-    String callNoParams() throws Exception;
+    String callProcedureWithoutParams() throws Exception;
 
     @POST
-    @Path("/input-params")
+    @Path("/procedure/with-input-params")
     @Produces(MediaType.TEXT_PLAIN)
-    String callWithInputParams(@RestQuery String username) throws Exception;
+    String callProcedureWithInputParams(@RestQuery String username) throws Exception;
+
+    // Functions (with return values)
 
     @GET
-    @Path("/output-params")
+    @Path("/function/return-basic-type")
     @Produces(MediaType.TEXT_PLAIN)
-    Integer callWithOutputParams() throws Exception;
+    Integer callFunctionReturningBasicType() throws Exception;
 
     @GET
-    @Path("/return-data-result-set")
+    @Path("/function/return-tuples")
     @Produces(MediaType.APPLICATION_JSON)
-    List<ReturnedUser> callReturningDataAsResultSet() throws Exception;
+    List<ReturnedUser> callFunctionReturningTuples() throws Exception;
 
     @GET
-    @Path("/return-data-basic-type")
+    @Path("/function/return-entities-no-association")
+    @Produces(MediaType.APPLICATION_JSON)
+    List<UserProfile> callFunctionReturningEntitiesNoAssociation() throws Exception;
+
+    @GET
+    @Path("/function/return-entities-toone")
+    @Produces(MediaType.APPLICATION_JSON)
+    List<UserActivity> callFunctionReturningEntitiesWithToOne() throws Exception;
+
+    // Procedures (with output parameters)
+
+    @GET
+    @Path("/procedure/output-param-basic-type")
     @Produces(MediaType.TEXT_PLAIN)
-    Integer callReturningDataAsBasicType() throws Exception;
+    Integer callProcedureWithOutputParamBasicType() throws Exception;
 
     @GET
-    @Path("/return-data-entities-no-association")
+    @Path("/procedure/output-param-tuples")
     @Produces(MediaType.APPLICATION_JSON)
-    List<UserProfile> callReturningDataAsEntitiesNoAssociation() throws Exception;
+    List<ReturnedUser> callProcedureWithOutputParamTuples() throws Exception;
 
     @GET
-    @Path("/return-data-entities-toone")
+    @Path("/procedure/output-param-entities-no-association")
     @Produces(MediaType.APPLICATION_JSON)
-    List<UserActivity> callReturningDataAsEntitiesWithToOne() throws Exception;
+    List<UserProfile> callProcedureWithOutputParamEntitiesNoAssociation() throws Exception;
 
     @GET
-    @Path("/cursor")
+    @Path("/procedure/output-param-entities-toone")
     @Produces(MediaType.APPLICATION_JSON)
-    List<ReturnedUser> callWithCursor() throws Exception;
+    List<UserActivity> callProcedureWithOutputParamEntitiesWithToOne() throws Exception;
 }
