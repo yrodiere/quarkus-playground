@@ -98,3 +98,26 @@ When calling functions or procedures returning result sets mapped to entities, a
 * To-many associations cannot be initialized eagerly from the result set returned by the function/procedure. 
 
 These constraints can be avoided with more Hibernate-native ways to retrieve entities -- e.g. JPQL/HQL queries, `Criteria` queries, or `find()`/`findMultiple()` with an entity graph -- where any association can be explicitly configured to be fetched eagerly. Multiple SQL statements may be needed in some cases, but they can generally be batched (no N+1 select).
+
+## Feature Support Matrix
+
+The following table shows which features are supported by each technology across all tested databases (PostgreSQL, Oracle, MSSQL).
+All tests produce identical results in both JVM and native modes.
+
+| Feature                                                             | JDBC    | Hibernate ORM | Vert.x Reactive SQL Client                | Hibernate Reactive                        |
+|---------------------------------------------------------------------|---------|---------------|-------------------------------------------|-------------------------------------------|
+| Procedure without parameters                                        | YES     | YES           | YES                                       | YES                                       |
+| Procedure with input parameters                                     | YES     | YES           | YES                                       | YES                                       |
+| Function returning basic type (scalar)                              | YES     | YES           | YES                                       | YES                                       |
+| Function returning tuples                                           | YES     | YES           | YES (PostgreSQL, MSSQL) / NO (Oracle[^1]) | YES (PostgreSQL, MSSQL) / NO (Oracle[^1]) |
+| Function returning entities (no associations)                       | N/A[^2] | YES           | N/A[^2]                                   | YES (PostgreSQL, MSSQL) / NO (Oracle[^1]) |
+| Function returning entities (with to-one association)               | N/A[^2] | YES           | N/A[^2]                                   | NO[^3]                                    |
+| Procedure with output parameter (basic type)                        | YES     | YES           | NO[^4]                                    | NO[^4]                                    |
+| Procedure with output parameter (tuples)                            | YES     | YES           | NO[^4]                                    | NO[^4]                                    |
+| Procedure with output parameter (entities, no associations)         | N/A[^2] | YES           | N/A[^2]                                   | NO[^4]                                    |
+| Procedure with output parameter (entities, with to-one association) | N/A[^2] | YES           | N/A[^2]                                   | NO[^4]                                    |
+
+[^1]: Reactive APIs have no dedicated support for procedure calls, thus Oracle's cursor-returning functions are not supported. See section "Calling more complex procedures" above.
+[^2]: Entities and persistence context do not make sense with raw JDBC/reactive SQL clients; these tests are disabled.
+[^3]: Not supported due to a known issue in Hibernate Reactive. See section "Entity mapping and associations" above and https://github.com/hibernate/hibernate-reactive/issues/3616.
+[^4]: Reactive APIs have no dedicated support for procedure calls, thus output parameters are not supported. See section "Calling more complex procedures" above.
