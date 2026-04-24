@@ -1,6 +1,5 @@
-<?xml version="1.0"?>
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.acme</groupId>
   <artifactId>code-with-quarkus</artifactId>
@@ -13,8 +12,17 @@
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
     <quarkus.platform.version>3.34.5</quarkus.platform.version>
-    <skipITs>true</skipITs>
     <surefire-plugin.version>3.2.3</surefire-plugin.version>
+
+    <skipJvmITs>false</skipJvmITs>
+    <skipNativeITs>true</skipNativeITs>
+
+    <skipPostgresqlJvmITs>${skipJvmITs}</skipPostgresqlJvmITs>
+    <skipOracleJvmITs>${skipJvmITs}</skipOracleJvmITs>
+    <skipMssqlJvmITs>${skipJvmITs}</skipMssqlJvmITs>
+    <skipPostgresqlNativeITs>${skipNativeITs}</skipPostgresqlNativeITs>
+    <skipOracleNativeITs>${skipNativeITs}</skipOracleNativeITs>
+    <skipMssqlNativeITs>${skipNativeITs}</skipMssqlNativeITs>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -30,7 +38,11 @@
   <dependencies>
     <dependency>
       <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-hibernate-orm-panache</artifactId>
+      <artifactId>quarkus-hibernate-orm</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-hibernate-reactive</artifactId>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -38,7 +50,31 @@
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-rest-jackson</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
       <artifactId>quarkus-jdbc-postgresql</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-reactive-pg-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-jdbc-oracle</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-reactive-oracle-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-jdbc-mssql</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-reactive-mssql-client</artifactId>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -46,7 +82,12 @@
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-hibernate-orm</artifactId>
+      <artifactId>quarkus-flyway</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-hibernate7</artifactId>
+      <version>2.21.2</version>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -95,28 +136,141 @@
           </systemPropertyVariables>
           <argLine>@{argLine}</argLine>
         </configuration>
+        <executions>
+          <execution>
+            <id>default-test</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <!-- Using failsafe instead, because it allows multiple failing executions -->
+            <phase>none</phase>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <artifactId>maven-failsafe-plugin</artifactId>
         <version>${surefire-plugin.version}</version>
+        <configuration>
+          <systemPropertyVariables>
+            <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+            <maven.home>${maven.home}</maven.home>
+          </systemPropertyVariables>
+          <argLine>@{argLine}</argLine>
+          <redirectTestOutputToFile>true</redirectTestOutputToFile>
+        </configuration>
         <executions>
           <execution>
+            <id>default</id>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+            <!-- Using properly named executions instead -->
+            <phase>none</phase>
+          </execution>
+          <execution>
+            <id>jvm-postgresql</id>
             <goals>
               <goal>integration-test</goal>
               <goal>verify</goal>
             </goals>
             <configuration>
-              <systemPropertyVariables>
-                <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
-                <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
-                <maven.home>${maven.home}</maven.home>
+              <skipITs>${skipPostgresqlJvmITs}</skipITs>
+              <includes>
+                <include>**/Test*.java</include>
+                <include>**/*Test.java</include>
+                <include>**/*TestCase.java</include>
+              </includes>
+              <systemPropertyVariables combine.children="append">
+                <quarkus.test.profile>prod,postgresql</quarkus.test.profile>
               </systemPropertyVariables>
+              <reportNameSuffix>jvm-postgresql</reportNameSuffix>
+            </configuration>
+          </execution>
+          <execution>
+            <id>jvm-oracle</id>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+            <configuration>
+              <skipITs>${skipOracleJvmITs}</skipITs>
+              <includes>
+                <include>**/Test*.java</include>
+                <include>**/*Test.java</include>
+                <include>**/*TestCase.java</include>
+              </includes>
+              <systemPropertyVariables combine.children="append">
+                <quarkus.test.profile>prod,oracle</quarkus.test.profile>
+              </systemPropertyVariables>
+              <reportNameSuffix>jvm-oracle</reportNameSuffix>
+            </configuration>
+          </execution>
+          <execution>
+            <id>jvm-mssql</id>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+            <configuration>
+              <skipITs>${skipMssqlJvmITs}</skipITs>
+              <includes>
+                <include>**/Test*.java</include>
+                <include>**/*Test.java</include>
+                <include>**/*TestCase.java</include>
+              </includes>
+              <systemPropertyVariables combine.children="append">
+                <quarkus.test.profile>prod,mssql</quarkus.test.profile>
+              </systemPropertyVariables>
+              <reportNameSuffix>jvm-mssql</reportNameSuffix>
+            </configuration>
+          </execution>
+          <execution>
+            <id>native-postgresql</id>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+            <configuration>
+              <skipITs>${skipPostgresqlNativeITs}</skipITs>
+              <systemPropertyVariables combine.children="append">
+                <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
+                <quarkus.test.profile>prod,postgresql</quarkus.test.profile>
+              </systemPropertyVariables>
+              <reportNameSuffix>native-postgresql</reportNameSuffix>
+            </configuration>
+          </execution>
+          <execution>
+            <id>native-oracle</id>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+            <configuration>
+              <skipITs>${skipOracleJvmITs}</skipITs>
+              <systemPropertyVariables combine.children="append">
+                <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
+                <quarkus.test.profile>prod,oracle</quarkus.test.profile>
+              </systemPropertyVariables>
+              <reportNameSuffix>native-oracle</reportNameSuffix>
+            </configuration>
+          </execution>
+          <execution>
+            <id>native-mssql</id>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+            <configuration>
+              <skipITs>${skipMssqlNativeITs}</skipITs>
+              <systemPropertyVariables combine.children="append">
+                <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
+                <quarkus.test.profile>prod,mssql</quarkus.test.profile>
+              </systemPropertyVariables>
+              <reportNameSuffix>native-mssql</reportNameSuffix>
             </configuration>
           </execution>
         </executions>
-        <configuration>
-          <argLine>@{argLine}</argLine>
-        </configuration>
       </plugin>
     </plugins>
   </build>
@@ -129,9 +283,52 @@
         </property>
       </activation>
       <properties>
-        <skipITs>false</skipITs>
+        <skipJvmITs>true</skipJvmITs>
+        <skipNativeITs>false</skipNativeITs>
         <quarkus.native.enabled>true</quarkus.native.enabled>
         <quarkus.package.jar.enabled>false</quarkus.package.jar.enabled>
+      </properties>
+    </profile>
+    <profile>
+      <id>postgresql</id>
+      <activation>
+        <property>
+          <name>postgresql</name>
+        </property>
+      </activation>
+      <properties>
+        <skipOracleJvmITs>true</skipOracleJvmITs>
+        <skipMssqlJvmITs>true</skipMssqlJvmITs>
+        <skipOracleNativeITs>true</skipOracleNativeITs>
+        <skipMssqlNativeITs>true</skipMssqlNativeITs>
+      </properties>
+    </profile>
+    <profile>
+      <id>oracle</id>
+      <activation>
+        <property>
+          <name>oracle</name>
+        </property>
+      </activation>
+      <properties>
+        <skipPostgresqlJvmITs>true</skipPostgresqlJvmITs>
+        <skipMssqlJvmITs>true</skipMssqlJvmITs>
+        <skipPostgresqlNativeITs>true</skipPostgresqlNativeITs>
+        <skipMssqlNativeITs>true</skipMssqlNativeITs>
+      </properties>
+    </profile>
+    <profile>
+      <id>mssql</id>
+      <activation>
+        <property>
+          <name>mssql</name>
+        </property>
+      </activation>
+      <properties>
+        <skipPostgresqlJvmITs>true</skipPostgresqlJvmITs>
+        <skipOracleJvmITs>true</skipOracleJvmITs>
+        <skipPostgresqlNativeITs>true</skipPostgresqlNativeITs>
+        <skipOracleNativeITs>true</skipOracleNativeITs>
       </properties>
     </profile>
     <profile>
@@ -157,11 +354,19 @@
           <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
           <layout>default</layout>
           <snapshots>
-            <enabled>true</enabled>
             <updatePolicy>always</updatePolicy>
           </snapshots>
         </repository>
       </repositories>
     </profile>
   </profiles>
+  <reporting>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-report-plugin</artifactId>
+        <version>3.5.5</version>
+      </plugin>
+    </plugins>
+  </reporting>
 </project>
