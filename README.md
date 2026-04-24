@@ -67,6 +67,24 @@ More complex procedures may have more constraints:
   * Oracle DB does not support implicit conversion of function-returned cursors in SQL.
     As a result, the corresponding result set can only be retrieved by calling the function using `prepareCall` and a custom-syntax: `{ ? = call my_function() }`, where `?` is an `OUT` parameter.
 
+### Cursors in Hibernate
+
+Stored procedures / functions may be defined in such a way that they return a cursor.
+
+Depending on the database and definition, these may be called in different ways in Hibernate ORM, resulting in different execution:
+
+* When called as a native query, the result set can be consumed in a single step and retrieved as a list (`getResultList()`),
+  or scrolled through (`scroll()`), which enables batched reads.
+* When called as a procedure call, the result set can only be consumed in a single step and retrieved as a list (`getResultList()`),
+  it cannot be scrolled through.
+
+Additional limitations apply:
+
+* Some JDBC drivers may not allow running a query, especially a mutation query, in the same transaction as the one currently scrolling through a result set, making batch processes impractical.
+* The benefits of scrolling within a transaction are questionable when this scrolling is extensive: long-running transactions can be a serious performance bottleneck.
+  One could prefer designing such batch processes around multiple transactions,
+  each processing a "page" of results using [key-based pagination](https://docs.hibernate.org/orm/7.3/introduction/html_single/#key-based-pagination).
+
 ### Persistence context synchronization
 
 Calling functions or procedures, like any native SQL execution, requires some precautions when done within the context of a "stateful" `Session` (within a "persistence context", or first-level cache).
